@@ -1,0 +1,2787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MelodyFlow - 本地音乐播放器</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #000;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --bg-hover: #3a3a3a;
+      --text-primary: #fff;
+      --text-secondary: #a1a1a6;
+      --text-tertiary: #6e6e73;
+      --accent: #fc3c44;
+      --accent-light: #ff6b72;
+      --gradient-start: #fc3c44;
+      --gradient-end: #c82647;
+      --border: rgba(255,255,255,0.1);
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶部导航栏 */
+    .top-nav {
+      height: 64px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 24px;
+      -webkit-app-region: drag;
+    }
+
+    .top-nav > * {
+      -webkit-app-region: no-drag;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover, .nav-btn.active {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 400px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 16px 10px 40px;
+      border-radius: 20px;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+    }
+
+    /* 主题切换 */
+    .theme-toggle {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .theme-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .theme-btn.active {
+      border-color: var(--text-primary);
+    }
+
+    .theme-btn.light {
+      background: linear-gradient(135deg, #fff 50%, #667eea 50%);
+    }
+
+    .theme-btn.dark {
+      background: linear-gradient(135deg, #1a1a2e 50%, #16213e 50%);
+    }
+
+    .theme-btn.pink {
+      background: linear-gradient(135deg, #ff9a9e 50%, #fecfef 50%);
+    }
+
+    .theme-btn.blue {
+      background: linear-gradient(135deg, #667eea 50%, #764ba2 50%);
+    }
+
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      padding: 16px;
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+    }
+
+    .sidebar-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .sidebar-item.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .sidebar-item i {
+      width: 20px;
+      text-align: center;
+    }
+
+    /* 播放列表项 */
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .playlist-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .playlist-item.playing {
+      background: var(--bg-tertiary);
+    }
+
+    .playlist-cover {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .playlist-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .playlist-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .playlist-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .playlist-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* 内容区域 */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* 正在播放大封面 */
+    .now-playing-hero {
+      position: relative;
+      height: 320px;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: blur(60px) brightness(0.4);
+      transform: scale(1.2);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 24px;
+      padding: 24px;
+      width: 100%;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+    }
+
+    .hero-cover {
+      width: 220px;
+      height: 220px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      flex-shrink: 0;
+    }
+
+    .hero-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .hero-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .hero-type {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .hero-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+
+    .hero-artist {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .hero-album {
+      font-size: 14px;
+      color: var(--text-tertiary);
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .btn-primary {
+      padding: 12px 32px;
+      border-radius: 24px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-play {
+      background: var(--text-primary);
+      color: var(--bg-primary);
+    }
+
+    .btn-play:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-secondary {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+    }
+
+    .btn-secondary.active {
+      color: var(--accent);
+    }
+
+    /* 歌词区域 */
+    .lyrics-section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lyrics-toggle {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lyrics-toggle label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lyrics-toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .lyrics-container {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 32px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .lyric-line {
+      font-size: 18px;
+      line-height: 2.5;
+      color: var(--text-tertiary);
+      transition: all 0.3s;
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .lyric-line.active {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .lyric-line .romaji {
+      display: block;
+      font-size: 14px;
+      color: var(--accent-light);
+      margin-top: 2px;
+    }
+
+    .lyric-line.active .romaji {
+      font-size: 16px;
+    }
+
+    .no-lyrics {
+      text-align: center;
+      color: var(--text-tertiary);
+      padding: 40px;
+    }
+
+    /* 歌曲列表 */
+    .songs-section {
+      margin-bottom: 32px;
+    }
+
+    .songs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .song-list {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .song-item {
+      display: grid;
+      grid-template-columns: 40px 1fr 120px 60px;
+      gap: 16px;
+      padding: 12px 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .song-item:last-child {
+      border-bottom: none;
+    }
+
+    .song-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .song-item.playing {
+      background: var(--bg-tertiary);
+    }
+
+    .song-index {
+      color: var(--text-tertiary);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .song-item.playing .song-index {
+      color: var(--accent);
+    }
+
+    .song-info {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .song-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .song-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .song-thumb-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .song-details {
+      min-width: 0;
+    }
+
+    .song-title {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .song-item.playing .song-title {
+      color: var(--accent);
+    }
+
+    .song-artist {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-album {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-duration {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      text-align: right;
+    }
+
+    .song-actions {
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .song-item:hover .song-actions {
+      opacity: 1;
+    }
+
+    .song-action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .song-action-btn:hover {
+      background: var(--accent);
+    }
+
+    /* 播放底部栏 */
+    .player-bar {
+      height: 88px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+    }
+
+    .player-song-info {
+      display: flex;
+      gap: 12px;
+      width: 240px;
+      flex-shrink: 0;
+    }
+
+    .player-thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .player-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .player-thumb-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .player-song-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .player-song-title {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-song-artist {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-controls {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-buttons {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .control-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 4px;
+    }
+
+    .control-btn:hover {
+      color: var(--accent);
+      transform: scale(1.1);
+    }
+
+    .control-btn.play-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-btn.play-btn:hover {
+      transform: scale(1.1);
+      background: var(--text-primary);
+      color: var(--bg-primary);
+    }
+
+    .progress-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .progress-time {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      width: 40px;
+      text-align: center;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-bar:hover {
+      height: 6px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background: var(--text-primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .progress-bar:hover .progress-fill::after {
+      opacity: 1;
+    }
+
+    .player-extra {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      width: 240px;
+      justify-content: flex-end;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .volume-slider {
+      width: 100px;
+      height: 4px;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .volume-fill {
+      height: 100%;
+      background: var(--text-primary);
+      border-radius: 2px;
+    }
+
+    /* 模态框 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 24px;
+      min-width: 400px;
+      max-width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    /* 表单 */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary-submit {
+      background: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .btn-primary-submit:hover {
+      background: var(--accent-light);
+    }
+
+    .btn-secondary-submit {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary-submit:hover {
+      background: var(--bg-hover);
+    }
+
+    /* 上传区域 */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent);
+      background: var(--bg-tertiary);
+    }
+
+    .upload-zone i {
+      font-size: 48px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+    }
+
+    .upload-zone p {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .upload-zone span {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* 歌词输入 */
+    .lyrics-input {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: monospace;
+      resize: vertical;
+      outline: none;
+    }
+
+    .lyrics-input:focus {
+      border-color: var(--accent);
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      color: var(--text-tertiary);
+      margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* 歌词编辑弹窗 */
+    .lyrics-edit-modal {
+      width: 700px;
+    }
+
+    .lyrics-edit-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 12px;
+    }
+
+    /* 设置页面 */
+    .settings-content {
+      max-width: 600px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .setting-info h4 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .setting-info p {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    /* Switch 开关 */
+    .switch {
+      width: 48px;
+      height: 28px;
+      background: var(--bg-tertiary);
+      border-radius: 14px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .switch.active {
+      background: var(--accent);
+    }
+
+    .switch::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: all 0.2s;
+    }
+
+    .switch.active::after {
+      left: 22px;
+    }
+
+    /* 迷你播放器 */
+    .mini-player {
+      display: none;
+    }
+
+    /* 响应式 */
+    @media (max-width: 1024px) {
+      .sidebar {
+        width: 220px;
+      }
+      
+      .hero-cover {
+        width: 180px;
+        height: 180px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+      
+      .top-nav {
+        padding: 0 16px;
+      }
+      
+      .search-box {
+        display: none;
+      }
+      
+      .hero-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      
+      .hero-cover {
+        width: 200px;
+        height: 200px;
+      }
+      
+      .player-bar {
+        height: 72px;
+      }
+      
+      .player-song-info {
+        width: 180px;
+      }
+      
+      .player-extra {
+        width: auto;
+      }
+      
+      .volume-control {
+        display: none;
+      }
+    }
+
+    /* 全屏播放器 (Apple Music 风格) */
+    .full-player {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .full-player-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: cover;
+      background-position: center;
+      filter: blur(80px);
+      opacity: 0.6;
+      transform: scale(1.2);
+    }
+
+    .full-player-bg::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+    }
+
+    .full-player-content {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      width: 100%;
+      height: 100%;
+      padding: 40px;
+      gap: 40px;
+    }
+
+    /* 左侧：封面 */
+    .full-player-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .full-cover-wrapper {
+      perspective: 1000px;
+    }
+
+    .full-cover {
+      width: 320px;
+      height: 320px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+    }
+
+    .full-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .full-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .full-cover.spinning {
+      animation: coverSpin 8s linear infinite;
+    }
+
+    @keyframes coverSpin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+
+    .full-cover-actions {
+      display: flex;
+      gap: 16px;
+    }
+
+    .full-action-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+    }
+
+    .full-action-btn:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.1);
+    }
+
+    /* 中间：歌曲信息 */
+    .full-player-center {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 32px;
+    }
+
+    .full-song-info {
+      text-align: center;
+    }
+
+    .full-song-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    .full-song-artist {
+      font-size: 18px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 4px;
+    }
+
+    .full-song-album {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .full-progress-section {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .full-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .full-progress-fill {
+      height: 100%;
+      background: white;
+      border-radius: 3px;
+      transition: width 0.1s linear;
+    }
+
+    .full-time-display {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .full-player-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .full-ctrl-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .full-ctrl-btn:hover {
+      transform: scale(1.2);
+      color: rgba(255,255,255,0.8);
+    }
+
+    .full-play-btn {
+      width: 64px;
+      height: 64px;
+      background: white;
+      color: black;
+      font-size: 24px;
+    }
+
+    .full-play-btn:hover {
+      transform: scale(1.1);
+      color: black;
+    }
+
+    /* 右侧：歌词 */
+    .full-player-right {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .full-lyrics-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 20px;
+    }
+
+    .full-lyrics-header span {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .full-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .full-close-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .full-lyrics-container {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    .full-lyric-line {
+      padding: 12px 16px;
+      margin: 4px 0;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .full-lyric-line.active {
+      background: rgba(255,255,255,0.15);
+    }
+
+    .full-lyric-line.active .lyric-text {
+      color: white;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .lyric-text {
+      color: rgba(255,255,255,0.5);
+      font-size: 16px;
+      line-height: 1.4;
+      transition: all 0.3s ease;
+    }
+
+    .lyric-romaji {
+      color: rgba(255,255,255,0.35);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .full-no-lyrics {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: rgba(255,255,255,0.5);
+      gap: 16px;
+    }
+
+    .full-no-lyrics i {
+      font-size: 48px;
+    }
+
+    .full-no-lyrics p {
+      font-size: 14px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 900px) {
+      .full-player-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .full-player-left {
+        flex-direction: row;
+        justify-content: center;
+      }
+
+      .full-cover {
+        width: 200px;
+        height: 200px;
+      }
+
+      .full-player-right {
+        max-height: 300px;
+      }
+    }
+
+    /* 动画 */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--bg-hover);
+    }
+
+    /* 语言切换 */
+    .lang-select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部导航 -->
+    <nav class="top-nav">
+      <button class="nav-btn" :class="{active: currentView === 'library'}" @click="currentView = 'library'">
+        <i class="fas fa-music"></i> 资料库
+      </button>
+      <button class="nav-btn" :class="{active: currentView === 'playlists'}" @click="currentView = 'playlists'">
+        <i class="fas fa-list"></i> 播放列表
+      </button>
+      <button class="nav-btn" :class="{active: currentView === 'settings'}" @click="currentView = 'settings'">
+        <i class="fas fa-cog"></i> 设置
+      </button>
+      
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" v-model="searchQuery" :placeholder="t.search">
+      </div>
+
+      <select class="lang-select" v-model="currentLang" @change="saveSettings">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+
+      <div class="theme-toggle">
+        <div class="theme-btn dark" :class="{active: theme === 'dark'}" @click="setTheme('dark')"></div>
+        <div class="theme-btn light" :class="{active: theme === 'light'}" @click="setTheme('light')"></div>
+        <div class="theme-btn pink" :class="{active: theme === 'pink'}" @click="setTheme('pink')"></div>
+        <div class="theme-btn blue" :class="{active: theme === 'blue'}" @click="setTheme('blue')"></div>
+      </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+      <!-- 侧边栏 -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-title">{{ t.library }}</div>
+          <div class="sidebar-item" :class="{active: filter === 'all'}" @click="filter = 'all'">
+            <i class="fas fa-music"></i>
+            <span>{{ t.allSongs }} ({{ songs.length }})</span>
+          </div>
+          <div class="sidebar-item" :class="{active: filter === 'favorites'}" @click="filter = 'favorites'">
+            <i class="fas fa-heart"></i>
+            <span>{{ t.favorites }} ({{ favorites.length }})</span>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">{{ t.recently }}</div>
+          <div class="playlist-item" v-for="(song, idx) in recentSongs.slice(0, 5)" :key="song.id" 
+               :class="{playing: currentSong?.id === song.id}" @click="playSong(song)">
+            <div class="playlist-cover">
+              <img v-if="song.cover" :src="song.cover" :alt="song.title">
+              <i v-else class="fas fa-music"></i>
+            </div>
+            <div class="playlist-info">
+              <div class="playlist-name">{{ song.title }}</div>
+              <div class="playlist-meta">{{ song.artist }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">{{ t.playlists }}</div>
+          <div class="sidebar-item" v-for="pl in playlists" :key="pl.id" 
+               :class="{active: currentPlaylist?.id === pl.id}" @click="selectPlaylist(pl)">
+            <i class="fas fa-list"></i>
+            <span>{{ pl.name }} ({{ pl.songs.length }})</span>
+          </div>
+          <div class="sidebar-item" @click="showCreatePlaylist = true">
+            <i class="fas fa-plus"></i>
+            <span>{{ t.createPlaylist }}</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 内容区域 -->
+      <main class="content-area">
+        <!-- 资料库视图 -->
+        <template v-if="currentView === 'library'">
+          <!-- 正在播放 -->
+          <div class="now-playing-hero" v-if="currentSong">
+            <div class="hero-bg" :style="currentSong.cover ? `background-image: url(${currentSong.cover})` : 'background: linear-gradient(135deg, #fc3c44, #c82647)'"></div>
+            <div class="hero-content">
+              <div class="hero-cover" @click="showFullPlayer = true">
+                <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.title">
+                <div v-else class="hero-cover-placeholder">
+                  <i class="fas fa-music"></i>
+                </div>
+              </div>
+              <div class="hero-info">
+                <div class="hero-type">{{ t.nowPlaying }}</div>
+                <div class="hero-title">{{ currentSong.title }}</div>
+                <div class="hero-artist">{{ currentSong.artist }}</div>
+                <div class="hero-album">{{ currentSong.album }}</div>
+                <div class="hero-actions">
+                  <button class="btn-primary btn-play" @click="togglePlay">
+                    <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+                    {{ isPlaying ? t.pause : t.play }}
+                  </button>
+                  <button class="btn-secondary" :class="{active: isFavorite(currentSong)}" @click="toggleFavorite(currentSong)">
+                    <i :class="isFavorite(currentSong) ? 'fas fa-heart' : 'far fa-heart'"></i>
+                  </button>
+                  <button class="btn-secondary" @click="showAddToPlaylist = true">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 歌词区域 -->
+          <div class="lyrics-section" v-if="currentSong && showLyrics">
+            <div class="section-title">
+              {{ t.lyrics }}
+              <div class="lyrics-toggle" v-if="currentSong.isJapanese">
+                <label>
+                  <input type="checkbox" v-model="showRomaji">
+                  {{ t.showRomaji }}
+                </label>
+              </div>
+            </div>
+            <div class="lyrics-container">
+              <template v-if="currentSong.lyrics && currentSong.lyrics.length">
+                <div v-for="(line, idx) in currentSong.lyrics" :key="idx" 
+                     class="lyric-line" :class="{active: currentLyricIndex === idx}">
+                  {{ line.text }}
+                  <span v-if="showRomaji && line.romaji" class="romaji">{{ line.romaji }}</span>
+                </div>
+              </template>
+              <div v-else class="no-lyrics">
+                <i class="fas fa-comment-slash"></i>
+                <p>{{ t.noLyrics }}</p>
+                <button class="btn btn-secondary-submit" @click="showLyricsEdit = true; showFullPlayer = false">
+                  <i class="fas fa-edit"></i> {{ t.addLyrics }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 歌曲列表 -->
+          <div class="songs-section">
+            <div class="songs-header">
+              <h2 class="section-title">
+                {{ filter === 'all' ? t.allSongs : filter === 'favorites' ? t.favorites : currentPlaylist?.name }}
+              </h2>
+              <button class="btn btn-primary-submit" @click="triggerUpload">
+                <i class="fas fa-plus"></i> {{ t.addMusic }}
+              </button>
+              <input type="file" ref="fileInput" @change="handleFileUpload" accept="audio/*" multiple style="display:none">
+            </div>
+
+            <div class="song-list" v-if="displayedSongs.length">
+              <div class="song-item" v-for="(song, idx) in displayedSongs" :key="song.id"
+                   :class="{playing: currentSong?.id === song.id}" @click="playSong(song)">
+                <div class="song-index">
+                  <i v-if="currentSong?.id === song.id && isPlaying" class="fas fa-volume-up" style="color: var(--accent)"></i>
+                  <span v-else>{{ idx + 1 }}</span>
+                </div>
+                <div class="song-info">
+                  <div class="song-thumb">
+                    <img v-if="song.cover" :src="song.cover" :alt="song.title">
+                    <div v-else class="song-thumb-placeholder">
+                      <i class="fas fa-music"></i>
+                    </div>
+                  </div>
+                  <div class="song-details">
+                    <div class="song-title">
+                      {{ song.title }}
+                      <i v-if="isFavorite(song)" class="fas fa-heart" style="color: var(--accent); font-size: 12px;"></i>
+                    </div>
+                    <div class="song-artist">{{ song.artist }}</div>
+                  </div>
+                </div>
+                <div class="song-album">{{ song.album }}</div>
+                <div class="song-duration">{{ formatTime(song.duration) }}</div>
+              </div>
+            </div>
+
+            <div class="empty-state" v-else>
+              <i class="fas fa-music"></i>
+              <h3>{{ t.noSongs }}</h3>
+              <p>{{ t.addSongsHint }}</p>
+              <button class="btn btn-primary-submit" @click="triggerUpload">
+                <i class="fas fa-plus"></i> {{ t.addMusic }}
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- 播放列表视图 -->
+        <template v-else-if="currentView === 'playlists'">
+          <div class="songs-header">
+            <h2 class="section-title">{{ t.playlists }}</h2>
+            <button class="btn btn-primary-submit" @click="showCreatePlaylist = true">
+              <i class="fas fa-plus"></i> {{ t.createPlaylist }}
+            </button>
+          </div>
+
+          <div class="song-list" v-if="playlists.length">
+            <div v-for="pl in playlists" :key="pl.id" class="playlist-item" 
+                 :class="{playing: currentPlaylist?.id === pl.id}" @click="selectPlaylist(pl)">
+              <div class="playlist-cover">
+                <img v-if="pl.cover" :src="pl.cover" :alt="pl.name">
+                <i v-else class="fas fa-list"></i>
+              </div>
+              <div class="playlist-info">
+                <div class="playlist-name">{{ pl.name }}</div>
+                <div class="playlist-meta">{{ pl.songs.length }} {{ t.songs }}</div>
+              </div>
+              <button class="btn-secondary" @click.stop="deletePlaylist(pl.id)" style="opacity: 1;">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="empty-state" v-else>
+            <i class="fas fa-list"></i>
+            <h3>{{ t.noPlaylists }}</h3>
+            <p>{{ t.createPlaylistHint }}</p>
+          </div>
+        </template>
+
+        <!-- 设置视图 -->
+        <template v-else-if="currentView === 'settings'">
+          <div class="settings-content">
+            <h2 class="section-title">{{ t.settings }}</h2>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.romajiByDefault }}</h4>
+                <p>{{ t.romajiByDefaultDesc }}</p>
+              </div>
+              <div class="switch" :class="{active: settings.showRomajiByDefault}" @click="settings.showRomajiByDefault = !settings.showRomajiByDefault; saveSettings()"></div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.showLyrics }}</h4>
+                <p>{{ t.showLyricsDesc }}</p>
+              </div>
+              <div class="switch" :class="{active: settings.showLyrics}" @click="settings.showLyrics = !settings.showLyrics; saveSettings()"></div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.autoPlay }}</h4>
+                <p>{{ t.autoPlayDesc }}</p>
+              </div>
+              <div class="switch" :class="{active: settings.autoPlay}" @click="settings.autoPlay = !settings.autoPlay; saveSettings()"></div>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.saveData }}</h4>
+                <p>{{ t.saveDataDesc }}</p>
+              </div>
+              <button class="btn btn-secondary-submit" @click="exportData">
+                <i class="fas fa-download"></i> {{ t.export }}
+              </button>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.importData }}</h4>
+                <p>{{ t.importDataDesc }}</p>
+              </div>
+              <button class="btn btn-secondary-submit" @click="triggerImport">
+                <i class="fas fa-upload"></i> {{ t.import }}
+              </button>
+              <input type="file" ref="importInput" @change="importData" accept=".json" style="display:none">
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4>{{ t.clearData }}</h4>
+                <p>{{ t.clearDataDesc }}</p>
+              </div>
+              <button class="btn btn-secondary-submit" @click="clearAllData" style="background: var(--accent);">
+                <i class="fas fa-trash"></i> {{ t.clear }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </main>
+    </div>
+
+    <!-- 播放底部栏 -->
+    <div class="player-bar">
+      <div class="player-song-info">
+        <div class="player-thumb" @click="showFullPlayer = true">
+          <img v-if="currentSong?.cover" :src="currentSong.cover" :alt="currentSong.title">
+          <div v-else class="player-thumb-placeholder">
+            <i class="fas fa-music"></i>
+          </div>
+        </div>
+        <div class="player-song-text" v-if="currentSong">
+          <div class="player-song-title">{{ currentSong.title }}</div>
+          <div class="player-song-artist">{{ currentSong.artist }}</div>
+        </div>
+      </div>
+
+      <div class="player-controls">
+        <div class="control-buttons">
+          <button class="control-btn" @click="prevSong">
+            <i class="fas fa-step-backward"></i>
+          </button>
+          <button class="control-btn play-btn" @click="togglePlay">
+            <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+          </button>
+          <button class="control-btn" @click="nextSong">
+            <i class="fas fa-step-forward"></i>
+          </button>
+          <button class="control-btn" @click="toggleLoop">
+            <i :class="loopMode === 'one' ? 'fas fa-redo' : loopMode === 'all' ? 'fas fa-redo' : 'fas fa-random'"></i>
+          </button>
+        </div>
+        <div class="progress-section">
+          <span class="progress-time">{{ formatTime(currentTime) }}</span>
+          <div class="progress-bar" @click="seek($event)">
+            <div class="progress-fill" :style="{width: progressPercent + '%'}"></div>
+          </div>
+          <span class="progress-time">{{ formatTime(currentSong?.duration || 0) }}</span>
+        </div>
+      </div>
+
+      <div class="player-extra">
+        <button class="control-btn" @click="showLyrics = !showLyrics" :class="{active: showLyrics}">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button class="control-btn" :class="{active: showRomaji}" @click="showRomaji = !showRomaji" v-if="currentSong?.isJapanese">
+          <i class="fas fa-language"></i>
+        </button>
+        <button class="control-btn" @click="toggleFavorite(currentSong)" v-if="currentSong">
+          <i :class="isFavorite(currentSong) ? 'fas fa-heart' : 'far fa-heart'" style="color: var(--accent)"></i>
+        </button>
+        <div class="volume-control">
+          <button class="control-btn" @click="toggleMute">
+            <i :class="isMuted ? 'fas fa-volume-mute' : volume > 0.5 ? 'fas fa-volume-up' : 'fas fa-volume-down'"></i>
+          </button>
+          <div class="volume-slider" @click="setVolume($event)">
+            <div class="volume-fill" :style="{width: (isMuted ? 0 : volume) * 100 + '%'}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全屏播放器 (Apple Music 风格) -->
+    <div class="full-player" v-if="showFullPlayer && currentSong" @click.self="showFullPlayer = false">
+      <div class="full-player-bg" :style="currentSong.cover ? `background-image: url(${currentSong.cover})` : ''"></div>
+      <div class="full-player-content">
+        <!-- 左侧：封面 -->
+        <div class="full-player-left">
+          <div class="full-cover-wrapper">
+            <div class="full-cover" :class="{spinning: isPlaying}">
+              <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.title">
+              <div v-else class="full-cover-placeholder">
+                <i class="fas fa-music"></i>
+              </div>
+            </div>
+          </div>
+          <div class="full-cover-actions">
+            <button class="full-action-btn" @click="toggleFavorite(currentSong)" v-if="currentSong">
+              <i :class="isFavorite(currentSong) ? 'fas' : 'far'" :style="isFavorite(currentSong) ? 'color: #fc3c44' : ''"></i>
+            </button>
+            <button class="full-action-btn" @click="showAddToPlaylist = true">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 中间：歌曲信息 -->
+        <div class="full-player-center">
+          <div class="full-song-info">
+            <div class="full-song-title">{{ currentSong.title }}</div>
+            <div class="full-song-artist">{{ currentSong.artist }}</div>
+            <div class="full-song-album">{{ currentSong.album }}</div>
+          </div>
+          <div class="full-progress-section">
+            <div class="full-progress-bar" @click="seek($event)">
+              <div class="full-progress-fill" :style="{width: progressPercent + '%'}"></div>
+            </div>
+            <div class="full-time-display">
+              <span>{{ formatTime(currentTime) }}</span>
+              <span>{{ formatTime(currentSong?.duration || 0) }}</span>
+            </div>
+          </div>
+          <div class="full-player-controls">
+            <button class="full-ctrl-btn" @click="toggleLoop">
+              <i :class="loopMode === 'one' ? 'fas fa-redo' : loopMode === 'all' ? 'fas fa-redo' : 'fas fa-random'"></i>
+            </button>
+            <button class="full-ctrl-btn" @click="prevSong">
+              <i class="fas fa-step-backward"></i>
+            </button>
+            <button class="full-ctrl-btn full-play-btn" @click="togglePlay">
+              <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+            </button>
+            <button class="full-ctrl-btn" @click="nextSong">
+              <i class="fas fa-step-forward"></i>
+            </button>
+            <button class="full-ctrl-btn" v-if="currentSong?.isJapanese" @click="showRomaji = !showRomaji">
+              <i class="fas fa-language" :style="showRomaji ? 'color: #fc3c44' : ''"></i>
+            </button>
+            <button class="full-ctrl-btn" v-else></button>
+          </div>
+        </div>
+
+        <!-- 右侧：歌词 -->
+        <div class="full-player-right">
+          <div class="full-lyrics-header">
+            <span>{{ t.lyrics }}</span>
+            <button class="full-close-btn" @click="showFullPlayer = false">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="full-lyrics-container">
+            <template v-if="currentSong.lyrics && currentSong.lyrics.length">
+              <div v-for="(line, idx) in currentSong.lyrics" :key="idx"
+                   class="full-lyric-line" :class="{active: currentLyricIndex === idx}">
+                <span class="lyric-text">{{ line.text }}</span>
+                <span v-if="showRomaji && line.romaji" class="lyric-romaji">{{ line.romaji }}</span>
+              </div>
+            </template>
+            <div v-else class="full-no-lyrics">
+              <i class="fas fa-comment-slash"></i>
+              <p>{{ t.noLyrics }}</p>
+              <button class="btn btn-secondary-submit" @click="showLyricsEdit = true; showFullPlayer = false">
+                <i class="fas fa-edit"></i> {{ t.addLyrics }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 创建播放列表弹窗 -->
+    <div class="modal-overlay" v-if="showCreatePlaylist" @click.self="showCreatePlaylist = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">{{ t.createPlaylist }}</h3>
+          <button class="modal-close" @click="showCreatePlaylist = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t.playlistName }}</label>
+          <input type="text" class="form-input" v-model="newPlaylistName" :placeholder="t.enterPlaylistName">
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="btn btn-secondary-submit" @click="showCreatePlaylist = false">{{ t.cancel }}</button>
+          <button class="btn btn-primary-submit" @click="createPlaylist">{{ t.create }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加到播放列表弹窗 -->
+    <div class="modal-overlay" v-if="showAddToPlaylist" @click.self="showAddToPlaylist = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">{{ t.addToPlaylist }}</h3>
+          <button class="modal-close" @click="showAddToPlaylist = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="sidebar-item" v-for="pl in playlists" :key="pl.id" @click="addToPlaylist(pl)">
+          <i class="fas fa-list"></i>
+          <span>{{ pl.name }}</span>
+        </div>
+        <div class="sidebar-item" @click="showCreatePlaylist = true; showAddToPlaylist = false">
+          <i class="fas fa-plus"></i>
+          <span>{{ t.createNewPlaylist }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歌词编辑弹窗 -->
+    <div class="modal-overlay" v-if="showLyricsEdit" @click.self="showLyricsEdit = false">
+      <div class="modal lyrics-edit-modal">
+        <div class="modal-header">
+          <h3 class="modal-title">{{ t.editLyrics }}</h3>
+          <button class="modal-close" @click="showLyricsEdit = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <p class="lyrics-edit-hint">{{ t.lyricsFormatHint }}</p>
+        <textarea class="lyrics-input" v-model="editingLyrics" :placeholder="t.lyricsPlaceholder"></textarea>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
+          <button class="btn btn-secondary-submit" @click="showLyricsEdit = false">{{ t.cancel }}</button>
+          <button class="btn btn-primary-submit" @click="saveLyrics">{{ t.save }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio ref="audio" @timeupdate="updateTime" @ended="onEnded" @loadedmetadata="onLoaded"></audio>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+    // 罗马音转换表
+    const romajiMap = {
+      'あ': 'a', 'い': 'i', 'う': 'u', 'え': 'e', 'お': 'o',
+      'か': 'ka', 'き': 'ki', 'く': 'ku', 'け': 'ke', 'こ': 'ko',
+      'さ': 'sa', 'し': 'shi', 'す': 'su', 'せ': 'se', 'そ': 'so',
+      'た': 'ta', 'ち': 'chi', 'つ': 'tsu', 'て': 'te', 'と': 'to',
+      'な': 'na', 'に': 'ni', 'ぬ': 'nu', 'ね': 'ne', 'の': 'no',
+      'は': 'ha', 'ひ': 'hi', 'ふ': 'fu', 'へ': 'he', 'ほ': 'ho',
+      'ま': 'ma', 'み': 'mi', 'む': 'mu', 'め': 'me', 'も': 'mo',
+      'や': 'ya', 'ゆ': 'yu', 'よ': 'yo',
+      'ら': 'ra', 'り': 'ri', 'る': 'ru', 'れ': 're', 'ろ': 'ro',
+      'わ': 'wa', 'を': 'wo', 'ん': 'n',
+      'が': 'ga', 'ぎ': 'gi', 'ぐ': 'gu', 'げ': 'ge', 'ご': 'go',
+      'ざ': 'za', 'じ': 'ji', 'ず': 'zu', 'ぜ': 'ze', 'ぞ': 'zo',
+      'だ': 'da', 'ぢ': 'di', 'づ': 'du', 'で': 'de', 'ど': 'do',
+      'ば': 'ba', 'び': 'bi', 'ぶ': 'bu', 'べ': 'be', 'ぼ': 'bo',
+      'ぱ': 'pa', 'ぴ': 'pi', 'ぷ': 'pu', 'ぺ': 'pe', 'ぽ': 'po',
+      'ぁ': 'a', 'ぃ': 'i', 'ぅ': 'u', 'ぇ': 'e', 'ぉ': 'o',
+      'っ': 'tsu', 'ゃ': 'ya', 'ゅ': 'yu', 'ょ': 'yo',
+      'ア': 'a', 'イ': 'i', 'ウ': 'u', 'エ': 'e', 'オ': 'o',
+      'カ': 'ka', 'キ': 'ki', 'ク': 'ku', 'ケ': 'ke', 'コ': 'ko',
+      'サ': 'sa', 'シ': 'shi', 'ス': 'su', 'セ': 'se', 'ソ': 'so',
+      'タ': 'ta', 'チ': 'chi', 'ツ': 'tsu', 'テ': 'te', 'ト': 'to',
+      'ナ': 'na', 'ニ': 'ni', 'ヌ': 'nu', 'ネ': 'ne', 'ノ': 'no',
+      'ハ': 'ha', 'ヒ': 'hi', 'フ': 'fu', 'ヘ': 'he', 'ホ': 'ho',
+      'マ': 'ma', 'ミ': 'mi', 'ム': 'mu', 'メ': 'me', 'モ': 'mo',
+      'ヤ': 'ya', 'ユ': 'yu', 'ヨ': 'yo',
+      'ラ': 'ra', 'リ': 'ri', 'ル': 'ru', 'レ': 're', 'ロ': 'ro',
+      'ワ': 'wa', 'ヲ': 'wo', 'ン': 'n',
+      'ガ': 'ga', 'ギ': 'gi', 'グ': 'gu', 'ゲ': 'ge', 'ゴ': 'go',
+      'ザ': 'za', 'ジ': 'ji', 'ズ': 'zu', 'ゼ': 'ze', 'ゾ': 'zo',
+      'ダ': 'da', 'ヂ': 'di', 'ヅ': 'du', 'デ': 'de', 'ド': 'do',
+      'バ': 'ba', 'ビ': 'bi', 'ブ': 'bu', 'ベ': 'be', 'ボ': 'bo',
+      'パ': 'pa', 'ピ': 'pi', 'プ': 'pu', 'ペ': 'pe', 'ポ': 'po',
+      'ァ': 'a', 'ィ': 'i', 'ゥ': 'u', 'ェ': 'e', 'ォ': 'o',
+      'ッ': 'tsu', 'ャ': 'ya', 'ュ': 'yu', 'ョ': 'yo'
+    };
+
+    function textToRomaji(text) {
+      let result = '';
+      for (let char of text) {
+        if (romajiMap[char]) {
+          result += romajiMap[char];
+        } else {
+          result += char;
+        }
+      }
+      return result;
+    }
+
+    function isJapanese(text) {
+      return /[\u3040-\u309F\u30A0-\u30FF]/.test(text);
+    }
+
+    function parseLyrics(lrc) {
+      const lines = [];
+      const regex = /\[(\d{2}):(\d{2})\.(\d{2})\](.*)/g;
+      let match;
+      
+      while ((match = regex.exec(lrc)) !== null) {
+        const minutes = parseInt(match[1]);
+        const seconds = parseInt(match[2]);
+        const milliseconds = parseInt(match[3]);
+        const text = match[4].trim();
+        
+        lines.push({
+          time: minutes * 60 + seconds + milliseconds / 100,
+          text: text,
+          romaji: isJapanese(text) ? textToRomaji(text) : ''
+        });
+      }
+      
+      return lines;
+    }
+
+    const translations = {
+      zh: {
+        search: '搜索音乐...',
+        library: '资料库',
+        playlists: '播放列表',
+        settings: '设置',
+        allSongs: '全部歌曲',
+        favorites: '收藏',
+        recently: '最近播放',
+        createPlaylist: '创建播放列表',
+        nowPlaying: '正在播放',
+        play: '播放',
+        pause: '暂停',
+        lyrics: '歌词',
+        showRomaji: '显示罗马音',
+        noLyrics: '暂无歌词',
+        addLyrics: '添加歌词',
+        songs: '首歌曲',
+        noSongs: '还没有歌曲',
+        addSongsHint: '点击上方按钮添加音乐文件',
+        addMusic: '添加音乐',
+        noPlaylists: '还没有播放列表',
+        createPlaylistHint: '创建你的第一个播放列表',
+        playlistName: '播放列表名称',
+        enterPlaylistName: '输入播放列表名称',
+        cancel: '取消',
+        create: '创建',
+        addToPlaylist: '添加到播放列表',
+        createNewPlaylist: '创建新播放列表...',
+        editLyrics: '编辑歌词',
+        lyricsFormatHint: '支持 LRC 格式：[00:12.34]歌词内容',
+        lyricsPlaceholder: '[00:12.34]第一句歌词\n[00:15.67]第二句歌词\n[00:18.90]第三句歌词',
+        save: '保存',
+        romajiByDefault: '默认显示罗马音',
+        romajiByDefaultDesc: '播放日语歌曲时自动显示罗马音',
+        showLyrics: '自动显示歌词',
+        showLyricsDesc: '播放时自动显示歌词面板',
+        autoPlay: '自动播放',
+        autoPlayDesc: '切换歌曲后自动开始播放',
+        saveData: '导出数据',
+        saveDataDesc: '将音乐库和设置导出为备份文件',
+        export: '导出',
+        importData: '导入数据',
+        importDataDesc: '从备份文件恢复音乐库和设置',
+        import: '导入',
+        clearData: '清除所有数据',
+        clearDataDesc: '删除所有音乐、播放列表和设置（不可恢复）',
+        clear: '清除'
+      },
+      en: {
+        search: 'Search music...',
+        library: 'Library',
+        playlists: 'Playlists',
+        settings: 'Settings',
+        allSongs: 'All Songs',
+        favorites: 'Favorites',
+        recently: 'Recently Played',
+        createPlaylist: 'Create Playlist',
+        nowPlaying: 'Now Playing',
+        play: 'Play',
+        pause: 'Pause',
+        lyrics: 'Lyrics',
+        showRomaji: 'Show Romaji',
+        noLyrics: 'No lyrics available',
+        addLyrics: 'Add Lyrics',
+        songs: 'songs',
+        noSongs: 'No songs yet',
+        addSongsHint: 'Click the button above to add music files',
+        addMusic: 'Add Music',
+        noPlaylists: 'No playlists yet',
+        createPlaylistHint: 'Create your first playlist',
+        playlistName: 'Playlist Name',
+        enterPlaylistName: 'Enter playlist name',
+        cancel: 'Cancel',
+        create: 'Create',
+        addToPlaylist: 'Add to Playlist',
+        createNewPlaylist: 'Create New Playlist...',
+        editLyrics: 'Edit Lyrics',
+        lyricsFormatHint: 'Supports LRC format: [00:12.34]Lyric text',
+        lyricsPlaceholder: '[00:12.34]First line\n[00:15.67]Second line\n[00:18.90]Third line',
+        save: 'Save',
+        romajiByDefault: 'Show Romaji by Default',
+        romajiByDefaultDesc: 'Automatically show romaji for Japanese songs',
+        showLyrics: 'Auto Show Lyrics',
+        showLyricsDesc: 'Automatically show lyrics panel when playing',
+        autoPlay: 'Auto Play',
+        autoPlayDesc: 'Auto start playing when switching songs',
+        saveData: 'Export Data',
+        saveDataDesc: 'Export music library and settings as backup',
+        export: 'Export',
+        importData: 'Import Data',
+        importDataDesc: 'Restore library and settings from backup',
+        import: 'Import',
+        clearData: 'Clear All Data',
+        clearDataDesc: 'Delete all music, playlists and settings (irreversible)',
+        clear: 'Clear'
+      },
+      ja: {
+        search: '音楽を検索...',
+        library: 'ライブラリ',
+        playlists: 'プレイリスト',
+        settings: '設定',
+        allSongs: 'すべての曲',
+        favorites: 'お気に入り',
+        recently: '最近再生',
+        createPlaylist: 'プレイリストを作成',
+        nowPlaying: '再生中',
+        play: '再生',
+        pause: '一時停止',
+        lyrics: '歌詞',
+        showRomaji: 'ローマ字を表示',
+        noLyrics: '歌詞がありません',
+        addLyrics: '歌詞を追加',
+        songs: '曲',
+        noSongs: '曲がまだありません',
+        addSongsHint: '上のボタンをクリックして音楽ファイルを追加',
+        addMusic: '音楽を追加',
+        noPlaylists: 'プレイリストがまだありません',
+        createPlaylistHint: '最初のプレイリストを作成',
+        playlistName: 'プレイリスト名',
+        enterPlaylistName: 'プレイリスト名を入力',
+        cancel: 'キャンセル',
+        create: '作成',
+        addToPlaylist: 'プレイリストに追加',
+        createNewPlaylist: '新しいプレイリストを作成...',
+        editLyrics: '歌詞を編集',
+        lyricsFormatHint: 'LRC形式に対応：[00:12.34]歌詞テキスト',
+        lyricsPlaceholder: '[00:12.34]最初の行\n[00:15.67]2行目\n[00:18.90]3行目',
+        save: '保存',
+        romajiByDefault: 'デフォルトでローマ字表示',
+        romajiByDefaultDesc: '日本語の曲で自動的にローマ字を表示',
+        showLyrics: '歌詞を自動表示',
+        showLyricsDesc: '再生時に歌詞パネルを自動的に表示',
+        autoPlay: '自動再生',
+        autoPlayDesc: '曲変更時に自動的に再生を開始',
+        saveData: 'データをエクスポート',
+        saveDataDesc: '音楽ライブラリと設定をバックアップとしてエクスポート',
+        export: 'エクスポート',
+        importData: 'データをインポート',
+        importDataDesc: 'バックアップファイルからライブラリ、設定を復元',
+        import: 'インポート',
+        clearData: 'すべてのデータを消去',
+        clearDataDesc: 'すべての音楽、プレイリスト、設定を削除（不可逆）',
+        clear: '消去'
+      }
+    };
+
+    createApp({
+      setup() {
+        const audio = ref(null);
+        const fileInput = ref(null);
+        const importInput = ref(null);
+
+        // 状态
+        const songs = ref([]);
+        const playlists = ref([]);
+        const favorites = ref([]);
+        const recentSongs = ref([]);
+        const currentSong = ref(null);
+        const currentPlaylist = ref(null);
+        const isPlaying = ref(false);
+        const currentTime = ref(0);
+        const duration = ref(0);
+        const volume = ref(0.8);
+        const isMuted = ref(false);
+        const loopMode = ref('none');
+        const showLyrics = ref(true);
+        const showRomaji = ref(false);
+        const showFullPlayer = ref(false);
+        const currentLyricIndex = ref(-1);
+        const searchQuery = ref('');
+        const filter = ref('all');
+        const currentView = ref('library');
+        const currentLang = ref('zh');
+        const theme = ref('dark');
+        const editingSongId = ref(null);
+        const editingLyrics = ref('');
+        const newPlaylistName = ref('');
+        const showCreatePlaylist = ref(false);
+        const showAddToPlaylist = ref(false);
+        const showLyricsEdit = ref(false);
+        const settings = ref({
+          showRomajiByDefault: false,
+          showLyrics: true,
+          autoPlay: true
+        });
+
+        // 计算属性
+        const t = computed(() => translations[currentLang.value] || translations.zh);
+
+        const displayedSongs = computed(() => {
+          let result = songs.value;
+          
+          if (filter.value === 'favorites') {
+            result = favorites.value;
+          } else if (currentPlaylist.value) {
+            result = currentPlaylist.value.songs;
+          }
+          
+          if (searchQuery.value) {
+            const query = searchQuery.value.toLowerCase();
+            result = result.filter(s => 
+              s.title.toLowerCase().includes(query) ||
+              s.artist.toLowerCase().includes(query) ||
+              s.album.toLowerCase().includes(query)
+            );
+          }
+          
+          return result;
+        });
+
+        const progressPercent = computed(() => {
+          if (!duration.value) return 0;
+          return (currentTime.value / duration.value) * 100;
+        });
+
+        // 方法
+        const loadData = () => {
+          try {
+            const savedSongs = localStorage.getItem('melodyflow_songs');
+            const savedPlaylists = localStorage.getItem('melodyflow_playlists');
+            const savedFavorites = localStorage.getItem('melodyflow_favorites');
+            const savedRecent = localStorage.getItem('melodyflow_recent');
+            const savedSettings = localStorage.getItem('melodyflow_settings');
+            const savedLang = localStorage.getItem('melodyflow_lang');
+            const savedTheme = localStorage.getItem('melodyflow_theme');
+            
+            if (savedSongs) songs.value = JSON.parse(savedSongs);
+            if (savedPlaylists) playlists.value = JSON.parse(savedPlaylists);
+            if (savedFavorites) favorites.value = JSON.parse(savedFavorites);
+            if (savedRecent) recentSongs.value = JSON.parse(savedRecent);
+            if (savedSettings) settings.value = JSON.parse(savedSettings);
+            if (savedLang) currentLang.value = savedLang;
+            if (savedTheme) theme.value = savedTheme;
+            
+            showRomaji.value = settings.value.showRomajiByDefault;
+            showLyrics.value = settings.value.showLyrics;
+            applyTheme();
+          } catch (e) {
+            console.error('Failed to load data:', e);
+          }
+        };
+
+        const saveData = () => {
+          try {
+            localStorage.setItem('melodyflow_songs', JSON.stringify(songs.value));
+            localStorage.setItem('melodyflow_playlists', JSON.stringify(playlists.value));
+            localStorage.setItem('melodyflow_favorites', JSON.stringify(favorites.value));
+            localStorage.setItem('melodyflow_recent', JSON.stringify(recentSongs.value.slice(0, 50)));
+            localStorage.setItem('melodyflow_settings', JSON.stringify(settings.value));
+            localStorage.setItem('melodyflow_lang', currentLang.value);
+            localStorage.setItem('melodyflow_theme', theme.value);
+          } catch (e) {
+            console.error('Failed to save data:', e);
+          }
+        };
+
+        const saveSettings = () => {
+          saveData();
+        };
+
+        const applyTheme = () => {
+          const themes = {
+            dark: {
+              '--bg-primary': '#000',
+              '--bg-secondary': '#1a1a1a',
+              '--bg-tertiary': '#2a2a2a',
+              '--bg-hover': '#3a3a3a',
+              '--gradient-start': '#fc3c44',
+              '--gradient-end': '#c82647'
+            },
+            light: {
+              '--bg-primary': '#f5f5f7',
+              '--bg-secondary': '#ffffff',
+              '--bg-tertiary': '#e8e8ed',
+              '--bg-hover': '#d8d8dd',
+              '--gradient-start': '#fc3c44',
+              '--gradient-end': '#c82647'
+            },
+            pink: {
+              '--bg-primary': '#1a0a10',
+              '--bg-secondary': '#2a1520',
+              '--bg-tertiary': '#3a2030',
+              '--bg-hover': '#4a2840',
+              '--gradient-start': '#ff9a9e',
+              '--gradient-end': '#fecfef'
+            },
+            blue: {
+              '--bg-primary': '#0a0a1a',
+              '--bg-secondary': '#151530',
+              '--bg-tertiary': '#202045',
+              '--bg-hover': '#2a2a55',
+              '--gradient-start': '#667eea',
+              '--gradient-end': '#764ba2'
+            }
+          };
+          
+          const colors = themes[theme.value] || themes.dark;
+          Object.entries(colors).forEach(([key, value]) => {
+            document.documentElement.style.setProperty(key, value);
+          });
+        };
+
+        const setTheme = (newTheme) => {
+          theme.value = newTheme;
+          applyTheme();
+          saveData();
+        };
+
+        const extractMetadata = (file) => {
+          return new Promise((resolve) => {
+            // 使用 jsmediatags 解析音频文件元数据（包括封面）
+            jsmediatags.read(file, {
+              onSuccess: (tag) => {
+                let title = file.name.replace(/\.[^/.]+$/, '');
+                let artist = t.value.unknown || '未知艺术家';
+                let album = t.value.unknown || '未知专辑';
+                let cover = null;
+                
+                // 提取标题
+                if (tag.tags.title) title = tag.tags.title;
+                // 提取艺术家
+                if (tag.tags.artist) artist = tag.tags.artist;
+                // 提取专辑
+                if (tag.tags.album) album = tag.tags.album;
+                
+                // 提取封面
+                if (tag.tags.picture) {
+                  const { data, format } = tag.tags.picture;
+                  let base64String = '';
+                  for (let i = 0; i < data.length; i++) {
+                    base64String += String.fromCharCode(data[i]);
+                  }
+                  cover = `data:${format};base64,${window.btoa(base64String)}`;
+                }
+                
+                // 获取音频时长
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const audioEl = new Audio();
+                  audioEl.src = e.target.result;
+                  audioEl.onloadedmetadata = () => {
+                    resolve({
+                      title, artist, album,
+                      duration: audioEl.duration,
+                      cover, file: URL.createObjectURL(file),
+                      lyrics: [], isJapanese: false
+                    });
+                  };
+                  audioEl.onerror = () => {
+                    resolve({
+                      title, artist, album,
+                      duration: 0, cover,
+                      file: URL.createObjectURL(file),
+                      lyrics: [], isJapanese: false
+                    });
+                  };
+                };
+                reader.readAsDataURL(file);
+              },
+              onError: (error) => {
+                // 解析失败，使用基本信息
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const audioEl = new Audio();
+                  audioEl.src = e.target.result;
+                  audioEl.onloadedmetadata = () => {
+                    resolve({
+                      title: file.name.replace(/\.[^/.]+$/, ''),
+                      artist: t.value.unknown || '未知艺术家',
+                      album: t.value.unknown || '未知专辑',
+                      duration: audioEl.duration,
+                      cover: null,
+                      file: URL.createObjectURL(file),
+                      lyrics: [], isJapanese: false
+                    });
+                  };
+                  audioEl.onerror = () => {
+                    resolve({
+                      title: file.name.replace(/\.[^/.]+$/, ''),
+                      artist: t.value.unknown || '未知艺术家',
+                      album: t.value.unknown || '未知专辑',
+                      duration: 0, cover: null,
+                      file: URL.createObjectURL(file),
+                      lyrics: [], isJapanese: false
+                    });
+                  };
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+          });
+        };
+
+        const handleFileUpload = async (e) => {
+          const files = Array.from(e.target.files);
+          for (const file of files) {
+            if (file.type.startsWith('audio/')) {
+              const metadata = await extractMetadata(file);
+              metadata.id = Date.now() + Math.random();
+              songs.value.push(metadata);
+            }
+          }
+          saveData();
+          e.target.value = '';
+        };
+
+        const triggerUpload = () => {
+          fileInput.value?.click();
+        };
+
+        const playSong = (song) => {
+          if (currentSong.value?.id === song.id) {
+            togglePlay();
+            return;
+          }
+          
+          currentSong.value = song;
+          audio.value.src = song.file;
+          audio.value.volume = isMuted.value ? 0 : volume.value;
+          
+          // 检测是否日语
+          if (isJapanese(song.title) || isJapanese(song.artist) || isJapanese(song.album)) {
+            song.isJapanese = true;
+          }
+          
+          // 更新最近播放
+          recentSongs.value = [song, ...recentSongs.value.filter(s => s.id !== song.id)].slice(0, 50);
+          
+          if (settings.value.autoPlay) {
+            audio.value.play();
+            isPlaying.value = true;
+          }
+          
+          saveData();
+        };
+
+        const togglePlay = () => {
+          if (!audio.value.src) return;
+          
+          if (isPlaying.value) {
+            audio.value.pause();
+          } else {
+            audio.value.play();
+          }
+          isPlaying.value = !isPlaying.value;
+        };
+
+        const prevSong = () => {
+          if (!currentSong.value) return;
+          const list = displayedSongs.value;
+          const idx = list.findIndex(s => s.id === currentSong.value.id);
+          if (idx > 0) {
+            playSong(list[idx - 1]);
+          }
+        };
+
+        const nextSong = () => {
+          if (!currentSong.value) return;
+          const list = displayedSongs.value;
+          const idx = list.findIndex(s => s.id === currentSong.value.id);
+          if (idx < list.length - 1) {
+            playSong(list[idx + 1]);
+          } else if (loopMode.value === 'all') {
+            playSong(list[0]);
+          }
+        };
+
+        const onEnded = () => {
+          if (loopMode.value === 'one') {
+            audio.value.currentTime = 0;
+            audio.value.play();
+          } else {
+            nextSong();
+          }
+        };
+
+        const updateTime = () => {
+          currentTime.value = audio.value.currentTime;
+          
+          // 更新歌词索引
+          if (currentSong.value?.lyrics?.length) {
+            const lyrics = currentSong.value.lyrics;
+            for (let i = lyrics.length - 1; i >= 0; i--) {
+              if (currentTime.value >= lyrics[i].time) {
+                currentLyricIndex.value = i;
+                break;
+              }
+            }
+          }
+        };
+
+        const onLoaded = () => {
+          duration.value = audio.value.duration;
+        };
+
+        const seek = (e) => {
+          const rect = e.target.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          audio.value.currentTime = percent * duration.value;
+        };
+
+        const setVolume = (e) => {
+          const rect = e.target.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          volume.value = Math.max(0, Math.min(1, percent));
+          audio.value.volume = volume.value;
+          isMuted.value = false;
+        };
+
+        const toggleMute = () => {
+          isMuted.value = !isMuted.value;
+          audio.value.volume = isMuted.value ? 0 : volume.value;
+        };
+
+        const toggleLoop = () => {
+          const modes = ['none', 'one', 'all'];
+          const idx = modes.indexOf(loopMode.value);
+          loopMode.value = modes[(idx + 1) % modes.length];
+        };
+
+        const isFavorite = (song) => {
+          return favorites.value.some(s => s.id === song.id);
+        };
+
+        const toggleFavorite = (song) => {
+          if (!song) return;
+          if (isFavorite(song)) {
+            favorites.value = favorites.value.filter(s => s.id !== song.id);
+          } else {
+            favorites.value.push(song);
+          }
+          saveData();
+        };
+
+        const selectPlaylist = (pl) => {
+          currentPlaylist.value = pl;
+          filter.value = 'playlist';
+          currentView.value = 'library';
+        };
+
+        const createPlaylist = () => {
+          if (!newPlaylistName.value.trim()) return;
+          playlists.value.push({
+            id: Date.now(),
+            name: newPlaylistName.value.trim(),
+            songs: [],
+            cover: null
+          });
+          newPlaylistName.value = '';
+          showCreatePlaylist.value = false;
+          saveData();
+        };
+
+        const deletePlaylist = (id) => {
+          playlists.value = playlists.value.filter(pl => pl.id !== id);
+          if (currentPlaylist.value?.id === id) {
+            currentPlaylist.value = null;
+          }
+          saveData();
+        };
+
+        const addToPlaylist = (pl) => {
+          if (!currentSong.value) return;
+          if (!pl.songs.some(s => s.id === currentSong.value.id)) {
+            pl.songs.push(currentSong.value);
+            pl.cover = pl.cover || currentSong.value.cover;
+            saveData();
+          }
+          showAddToPlaylist.value = false;
+        };
+
+        const formatTime = (seconds) => {
+          if (!seconds || isNaN(seconds)) return '0:00';
+          const mins = Math.floor(seconds / 60);
+          const secs = Math.floor(seconds % 60);
+          return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const exportData = () => {
+          const data = {
+            songs: songs.value.map(s => ({...s, file: null})),
+            playlists: playlists.value.map(p => ({...p, songs: []})),
+            favorites: favorites.value,
+            settings: settings.value
+          };
+          
+          const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `melodyflow-backup-${new Date().toISOString().slice(0,10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const triggerImport = () => {
+          importInput.value?.click();
+        };
+
+        const importData = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            try {
+              const data = JSON.parse(ev.target.result);
+              if (data.songs) songs.value = data.songs;
+              if (data.playlists) playlists.value = data.playlists;
+              if (data.favorites) favorites.value = data.favorites;
+              if (data.settings) settings.value = {...settings.value, ...data.settings};
+              saveData();
+              alert('数据导入成功！');
+            } catch (err) {
+              alert('导入失败：' + err.message);
+            }
+          };
+          reader.readAsText(file);
+          e.target.value = '';
+        };
+
+        const clearAllData = () => {
+          if (confirm('确定要清除所有数据吗？此操作不可恢复！')) {
+            songs.value = [];
+            playlists.value = [];
+            favorites.value = [];
+            recentSongs.value = [];
+            currentSong.value = null;
+            currentPlaylist.value = null;
+            saveData();
+            alert('所有数据已清除');
+          }
+        };
+
+        const saveLyrics = () => {
+          if (!currentSong.value || !editingLyrics.value) return;
+          currentSong.value.lyrics = parseLyrics(editingLyrics.value);
+          saveData();
+          showLyricsEdit.value = false;
+          editingLyrics.value = '';
+        };
+
+        // 监听歌曲变化，打开歌词编辑
+        watch(currentSong, (song) => {
+          if (song) {
+            editingSongId.value = song.id;
+            editingLyrics.value = song.lyrics?.map(l => `[${formatTime(l.time).replace(':', ':')}]${l.text}`).join('\n') || '';
+          }
+        });
+
+        onMounted(() => {
+          loadData();
+        });
+
+        return {
+          audio,
+          fileInput,
+          importInput,
+          songs,
+          playlists,
+          favorites,
+          recentSongs,
+          currentSong,
+          currentPlaylist,
+          isPlaying,
+          currentTime,
+          duration,
+          volume,
+          isMuted,
+          loopMode,
+          showLyrics,
+          showRomaji,
+          currentLyricIndex,
+          searchQuery,
+          filter,
+          currentView,
+          currentLang,
+          theme,
+          editingLyrics,
+          newPlaylistName,
+          showCreatePlaylist,
+          showAddToPlaylist,
+          showLyricsEdit,
+          settings,
+          t,
+          displayedSongs,
+          progressPercent,
+          loadData,
+          saveSettings,
+          setTheme,
+          handleFileUpload,
+          triggerUpload,
+          playSong,
+          togglePlay,
+          prevSong,
+          nextSong,
+          onEnded,
+          updateTime,
+          onLoaded,
+          seek,
+          setVolume,
+          toggleMute,
+          toggleLoop,
+          isFavorite,
+          toggleFavorite,
+          selectPlaylist,
+          createPlaylist,
+          deletePlaylist,
+          addToPlaylist,
+          formatTime,
+          exportData,
+          triggerImport,
+          importData,
+          clearAllData,
+          saveLyrics
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
