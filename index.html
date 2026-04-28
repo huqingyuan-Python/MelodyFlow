@@ -275,7 +275,7 @@
       inset: 0;
       background-size: cover;
       background-position: center;
-      filter: blur(60px) brightness(0.4);
+      filter: blur(100px) brightness(0.35);
       transform: scale(1.2);
     }
 
@@ -467,6 +467,17 @@
       font-size: 16px;
     }
 
+    .lyric-line .translation {
+      display: block;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    .lyric-line.active .translation {
+      color: var(--text-secondary);
+    }
+
     .no-lyrics {
       text-align: center;
       color: var(--text-tertiary);
@@ -593,6 +604,177 @@
       font-size: 13px;
       color: var(--text-tertiary);
       text-align: right;
+    }
+
+    .song-playcount {
+      font-size: 11px;
+      color: var(--accent);
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .song-playcount i {
+      margin-right: 4px;
+      font-size: 9px;
+    }
+
+    /* 迷你播放器 */
+    .mini-player {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 999;
+      min-width: 400px;
+    }
+
+    .mini-cover {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .mini-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .mini-cover-placeholder {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+    }
+
+    .mini-info {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .mini-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-artist {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .mini-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .mini-btn:hover {
+      background: var(--bg-hover);
+    }
+
+    .mini-play {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      color: white;
+    }
+
+    .mini-play:hover {
+      transform: scale(1.05);
+      background: var(--accent);
+    }
+
+    .mini-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mini-close:hover {
+      color: var(--text-primary);
+    }
+
+    .mini-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--bg-tertiary);
+      border-radius: 0 0 24px 24px;
+      cursor: pointer;
+    }
+
+    .mini-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.1s;
+    }
+
+    /* A/B 重复状态 */
+    .ab-repeat-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 8px;
+    }
+
+    .ab-btn {
+      color: var(--accent);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .ab-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .full-ctrl-btn.active {
+      color: var(--accent);
+      background: rgba(255,255,255,0.15);
     }
 
     .song-actions {
@@ -813,6 +995,84 @@
       height: 100%;
       background: var(--text-primary);
       border-radius: 2px;
+    }
+
+    /* 播放速率 */
+    .playback-rate-control {
+      display: flex;
+      align-items: center;
+    }
+
+    .rate-select {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+      min-width: 60px;
+    }
+
+    .rate-select:hover {
+      border-color: var(--accent);
+    }
+
+    .rate-select option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    /* 睡眠定时器 */
+    .sleep-timer-control {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .sleep-timer-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: var(--accent);
+      color: white;
+      font-size: 9px;
+      padding: 1px 3px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sleep-timer-popup {
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+
+    .sleep-timer-popup button {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .sleep-timer-popup button:hover {
+      background: var(--bg-hover);
     }
 
     /* 模态框 */
@@ -1166,7 +1426,7 @@
 
     .online-result-item {
       display: grid;
-      grid-template-columns: 36px 1fr 140px 60px auto auto;
+      grid-template-columns: 40px 1fr 140px 60px auto auto;
       align-items: center;
       gap: 12px;
       padding: 10px 16px;
@@ -1176,6 +1436,23 @@
 
     .online-result-item:hover {
       background: var(--bg-secondary);
+    }
+
+    .or-cover {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+    }
+    .or-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .or-index {
@@ -1286,9 +1563,13 @@
       bottom: 0;
       background-size: cover;
       background-position: center;
-      filter: blur(80px);
-      opacity: 0.6;
-      transform: scale(1.2);
+      filter: blur(250px) brightness(0.3);
+      opacity: 1;
+      transform: scale(1.4);
+    }
+    .full-player-bg.no-cover {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #0d0d1a 100%) !important;
+      filter: blur(300px) brightness(0.2);
     }
 
     .full-player-bg::after {
@@ -1305,7 +1586,8 @@
       position: relative;
       z-index: 1;
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr auto;
       width: 100%;
       height: 100%;
       padding: 40px;
@@ -1314,6 +1596,7 @@
 
     /* 左侧：封面 */
     .full-player-left {
+      grid-row: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1375,7 +1658,7 @@
       font-size: 18px;
       cursor: pointer;
       transition: all 0.2s;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(30px);
     }
 
     .full-action-btn:hover {
@@ -1383,16 +1666,16 @@
       transform: scale(1.1);
     }
 
-    /* 中间：歌曲信息 */
+    /* 中间：歌曲信息（合并到左侧底部） */
     .full-player-center {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 32px;
+      display: none;
     }
 
+    /* 歌曲信息移到左侧下方 */
     .full-song-info {
       text-align: center;
+      margin-top: auto;
+      padding-top: 20px;
     }
 
     .full-song-title {
@@ -1481,8 +1764,19 @@
       color: black;
     }
 
+    /* 底部控制栏 */
+    .full-player-bottom {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 0;
+    }
+
     /* 右侧：歌词 */
     .full-player-right {
+      grid-row: 1;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -1552,9 +1846,26 @@
     }
 
     .lyric-romaji {
-      color: rgba(255,255,255,0.35);
-      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
       font-style: italic;
+      display: block;
+    }
+
+    .lyric-translation {
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+      display: block;
+      margin-top: 4px;
+    }
+
+    .full-lyric-line.active .lyric-romaji {
+      color: rgba(255,255,255,0.7);
+      font-size: 15px;
+    }
+
+    .full-lyric-line.active .lyric-translation {
+      color: rgba(255,255,255,0.8);
     }
 
     .full-no-lyrics {
@@ -1587,15 +1898,26 @@
       .full-player-left {
         flex-direction: row;
         justify-content: center;
+        gap: 20px;
+      }
+
+      .full-song-info {
+        margin-top: 0;
+        padding-top: 0;
+        text-align: left;
       }
 
       .full-cover {
-        width: 200px;
-        height: 200px;
+        width: 150px;
+        height: 150px;
       }
 
       .full-player-right {
-        max-height: 300px;
+        max-height: 250px;
+      }
+
+      .full-player-bottom {
+        padding: 15px 0;
       }
     }
 
@@ -1762,6 +2084,12 @@
                   {{ t.showRomaji }}
                 </label>
               </div>
+              <div class="lyrics-toggle">
+                <label>
+                  <input type="checkbox" v-model="showTranslation">
+                  {{ t.showTranslation }}
+                </label>
+              </div>
             </div>
             <div class="lyrics-container">
               <template v-if="currentSong.lyrics && currentSong.lyrics.length">
@@ -1769,6 +2097,7 @@
                      class="lyric-line" :class="{active: currentLyricIndex === idx}">
                   {{ line.text }}
                   <span v-if="showRomaji && line.romaji" class="romaji">{{ line.romaji }}</span>
+                  <span v-if="showTranslation && line.translation" class="translation">{{ line.translation }}</span>
                 </div>
               </template>
               <div v-else class="no-lyrics">
@@ -1817,6 +2146,9 @@
                 </div>
                 <div class="song-album">{{ song.album }}</div>
                 <div class="song-duration">{{ formatTime(song.duration) }}</div>
+                <div class="song-playcount" v-if="playCount[song.id]">
+                  <i class="fas fa-play"></i> {{ playCount[song.id] }}
+                </div>
               </div>
             </div>
 
@@ -1873,7 +2205,7 @@
             <div v-if="!sourceUrl" class="empty-state">
               <i class="fas fa-plug"></i>
               <h3>未配置音源</h3>
-              <p>请先在「设置」页面配置洛雪音乐 API 服务器地址</p>
+              <p>请先运行「启动服务.bat」启动本地音源服务，再在「设置」页面配置地址</p>
               <button class="btn btn-primary-submit" @click="currentView = 'settings'">
                 <i class="fas fa-cog"></i> 去设置
               </button>
@@ -1906,7 +2238,10 @@
               <!-- 搜索结果 -->
               <div class="online-results" v-if="onlineResults.length">
                 <div class="online-result-item" v-for="(item, idx) in onlineResults" :key="idx">
-                  <div class="or-index">{{ idx + 1 }}</div>
+                  <div class="or-cover">
+                    <img v-if="item.cover" :src="item.cover" :alt="item.name">
+                    <i v-else class="fas fa-music"></i>
+                  </div>
                   <div class="or-info">
                     <div class="or-title">{{ item.name || item.title }}</div>
                     <div class="or-artist">{{ item.artist }}</div>
@@ -2072,6 +2407,9 @@
         <button class="control-btn" :class="{active: showRomaji}" @click="showRomaji = !showRomaji" v-if="currentSong?.isJapanese">
           <i class="fas fa-language"></i>
         </button>
+        <button class="control-btn" :class="{active: showTranslation}" @click="showTranslation = !showTranslation">
+          <i class="fas fa-globe"></i>
+        </button>
         <button class="control-btn" @click="toggleFavorite(currentSong)" v-if="currentSong">
           <i :class="isFavorite(currentSong) ? 'fas fa-heart' : 'far fa-heart'" style="color: var(--accent)"></i>
         </button>
@@ -2083,14 +2421,40 @@
             <div class="volume-fill" :style="{width: (isMuted ? 0 : volume) * 100 + '%'}"></div>
           </div>
         </div>
+
+        <!-- 播放速率 -->
+        <div class="playback-rate-control">
+          <select class="rate-select" :value="playbackRate" @change="setPlaybackRate(parseFloat($event.target.value))">
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1">1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+        </div>
+
+        <!-- 睡眠定时器 -->
+        <div class="sleep-timer-control">
+          <button class="control-btn" :class="{active: sleepTimer > 0}" title="睡眠定时器" @click="sleepTimer > 0 ? setSleepTimer(0) : setSleepTimer(15)">
+            <i class="fas fa-moon"></i>
+            <span v-if="sleepTimer > 0" class="sleep-timer-badge">{{ formatSleepTimer(sleepTimerRemaining) }}</span>
+          </button>
+          <div class="sleep-timer-popup" v-if="sleepTimer === 0">
+            <button @click="setSleepTimer(15)">15分钟</button>
+            <button @click="setSleepTimer(30)">30分钟</button>
+            <button @click="setSleepTimer(45)">45分钟</button>
+            <button @click="setSleepTimer(60)">60分钟</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 全屏播放器 (Apple Music 风格) -->
+    <!-- 全屏播放器 (左侧封面 + 右侧歌词 + 底部控制栏) -->
     <div class="full-player" v-if="showFullPlayer && currentSong" @click.self="showFullPlayer = false">
-      <div class="full-player-bg" :style="currentSong.cover ? `background-image: url(${currentSong.cover})` : ''"></div>
+      <div class="full-player-bg" :class="{'no-cover': !currentSong.cover}" :style="currentSong.cover ? `background-image: url(${currentSong.cover})` : ''"></div>
       <div class="full-player-content">
-        <!-- 左侧：封面 -->
+        <!-- 左侧：封面 + 歌曲信息 -->
         <div class="full-player-left">
           <div class="full-cover-wrapper">
             <div class="full-cover" :class="{spinning: isPlaying}">
@@ -2100,6 +2464,11 @@
               </div>
             </div>
           </div>
+          <div class="full-song-info">
+            <div class="full-song-title">{{ currentSong.title }}</div>
+            <div class="full-song-artist">{{ currentSong.artist }}</div>
+            <div class="full-song-album">{{ currentSong.album }}</div>
+          </div>
           <div class="full-cover-actions">
             <button class="full-action-btn" @click="toggleFavorite(currentSong)" v-if="currentSong">
               <i :class="isFavorite(currentSong) ? 'fas' : 'far'" :style="isFavorite(currentSong) ? 'color: #fc3c44' : ''"></i>
@@ -2107,16 +2476,41 @@
             <button class="full-action-btn" @click="showAddToPlaylist = true">
               <i class="fas fa-plus"></i>
             </button>
+            <button class="full-action-btn" @click="showMiniPlayer = true; showFullPlayer = false">
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <button class="full-action-btn" @click="showFullPlayer = false">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
         </div>
 
-        <!-- 中间：歌曲信息 -->
-        <div class="full-player-center">
-          <div class="full-song-info">
-            <div class="full-song-title">{{ currentSong.title }}</div>
-            <div class="full-song-artist">{{ currentSong.artist }}</div>
-            <div class="full-song-album">{{ currentSong.album }}</div>
+        <!-- 右侧：歌词 -->
+        <div class="full-player-right">
+          <div class="full-lyrics-header">
+            <span>{{ t.lyrics }}</span>
           </div>
+          <div class="full-lyrics-container">
+            <template v-if="currentSong.lyrics && currentSong.lyrics.length">
+              <div v-for="(line, idx) in currentSong.lyrics" :key="idx"
+                   class="full-lyric-line" :class="{active: currentLyricIndex === idx}">
+                <span class="lyric-text">{{ line.text }}</span>
+                <span v-if="showRomaji && line.romaji" class="lyric-romaji">{{ line.romaji }}</span>
+                <span v-if="showTranslation && line.translation" class="lyric-translation">{{ line.translation }}</span>
+              </div>
+            </template>
+            <div v-else class="full-no-lyrics">
+              <i class="fas fa-comment-slash"></i>
+              <p>{{ t.noLyrics }}</p>
+              <button class="btn btn-secondary-submit" @click="showLyricsEdit = true; showFullPlayer = false">
+                <i class="fas fa-edit"></i> {{ t.addLyrics }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部：控制栏 -->
+        <div class="full-player-bottom">
           <div class="full-progress-section">
             <div class="full-progress-bar" @click="seek($event)">
               <div class="full-progress-fill" :style="{width: progressPercent + '%'}"></div>
@@ -2143,34 +2537,57 @@
               <i class="fas fa-language" :style="showRomaji ? 'color: #fc3c44' : ''"></i>
             </button>
             <button class="full-ctrl-btn" v-else></button>
-          </div>
-        </div>
-
-        <!-- 右侧：歌词 -->
-        <div class="full-player-right">
-          <div class="full-lyrics-header">
-            <span>{{ t.lyrics }}</span>
-            <button class="full-close-btn" @click="showFullPlayer = false">
-              <i class="fas fa-times"></i>
+            <button class="full-ctrl-btn" @click="showTranslation = !showTranslation">
+              <i class="fas fa-globe" :style="showTranslation ? 'color: #fc3c44' : ''"></i>
+            </button>
+            <!-- A/B 重复 -->
+            <button class="full-ctrl-btn" :class="{active: abRepeat.enabled}" @click="toggleABRepeat" title="A-B 重复">
+              <i class="fas fa-repeat"></i>
+            </button>
+            <!-- 下载 -->
+            <button class="full-ctrl-btn" @click="downloadCurrentSong" title="下载歌曲">
+              <i class="fas fa-download"></i>
             </button>
           </div>
-          <div class="full-lyrics-container">
-            <template v-if="currentSong.lyrics && currentSong.lyrics.length">
-              <div v-for="(line, idx) in currentSong.lyrics" :key="idx"
-                   class="full-lyric-line" :class="{active: currentLyricIndex === idx}">
-                <span class="lyric-text">{{ line.text }}</span>
-                <span v-if="showRomaji && line.romaji" class="lyric-romaji">{{ line.romaji }}</span>
-              </div>
-            </template>
-            <div v-else class="full-no-lyrics">
-              <i class="fas fa-comment-slash"></i>
-              <p>{{ t.noLyrics }}</p>
-              <button class="btn btn-secondary-submit" @click="showLyricsEdit = true; showFullPlayer = false">
-                <i class="fas fa-edit"></i> {{ t.addLyrics }}
-              </button>
-            </div>
+          <!-- A/B 重复状态 -->
+          <div class="ab-repeat-status" v-if="abRepeat.enabled">
+            <span>A: {{ formatTime(abRepeat.start) }}</span>
+            <span v-if="!abRepeat.settingStart" class="ab-btn" @click="setABEnd">设置B点</span>
+            <span v-if="!abRepeat.settingStart && abRepeat.end > 0">B: {{ formatTime(abRepeat.end) }}</span>
+            <span class="ab-btn" @click="clearABRepeat">清除</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 迷你播放器 -->
+    <div class="mini-player" v-if="showMiniPlayer && currentSong">
+      <div class="mini-cover">
+        <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.title">
+        <div v-else class="mini-cover-placeholder">
+          <i class="fas fa-music"></i>
+        </div>
+      </div>
+      <div class="mini-info" @click="showMiniPlayer = false">
+        <div class="mini-title">{{ currentSong.title }}</div>
+        <div class="mini-artist">{{ currentSong.artist }}</div>
+      </div>
+      <div class="mini-controls">
+        <button class="mini-btn" @click="prevSong">
+          <i class="fas fa-step-backward"></i>
+        </button>
+        <button class="mini-btn mini-play" @click="togglePlay">
+          <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+        </button>
+        <button class="mini-btn" @click="nextSong">
+          <i class="fas fa-step-forward"></i>
+        </button>
+      </div>
+      <button class="mini-close" @click="showMiniPlayer = false; showFullPlayer = true">
+        <i class="fas fa-expand"></i>
+      </button>
+      <div class="mini-progress" @click="seek($event)">
+        <div class="mini-progress-fill" :style="{width: progressPercent + '%'}"></div>
       </div>
     </div>
 
@@ -2329,6 +2746,7 @@
         pause: '暂停',
         lyrics: '歌词',
         showRomaji: '显示罗马音',
+        showTranslation: '显示翻译',
         noLyrics: '暂无歌词',
         addLyrics: '添加歌词',
         songs: '首歌曲',
@@ -2377,6 +2795,7 @@
         pause: 'Pause',
         lyrics: 'Lyrics',
         showRomaji: 'Show Romaji',
+        showTranslation: 'Show Translation',
         noLyrics: 'No lyrics available',
         addLyrics: 'Add Lyrics',
         songs: 'songs',
@@ -2425,6 +2844,7 @@
         pause: '一時停止',
         lyrics: '歌詞',
         showRomaji: 'ローマ字を表示',
+        showTranslation: '翻訳を表示',
         noLyrics: '歌詞がありません',
         addLyrics: '歌詞を追加',
         songs: '曲',
@@ -2482,6 +2902,7 @@
         const loopMode = ref('none');
         const showLyrics = ref(true);
         const showRomaji = ref(false);
+        const showTranslation = ref(false);
         const showFullPlayer = ref(false);
         const currentLyricIndex = ref(-1);
         const searchQuery = ref('');
@@ -2495,13 +2916,22 @@
         const showCreatePlaylist = ref(false);
         const showAddToPlaylist = ref(false);
         const showLyricsEdit = ref(false);
+        const playbackRate = ref(1.0);
+        const sleepTimer = ref(0);  // 0表示关闭睡眠定时器
+        const sleepTimerRemaining = ref(0);  // 剩余秒数
+        const showMiniPlayer = ref(false);
+        const playCount = ref({});  // 播放次数统计
+        // A/B 重复
+        const abRepeat = ref({ enabled: false, start: 0, end: 0, settingStart: false });
+        // 键盘快捷键
+        const showShortcuts = ref(false);
         const settings = ref({
           showRomajiByDefault: false,
           showLyrics: true,
           autoPlay: true
         });
 
-        // 在线音源状态
+        // 在线音源状态（空字符串表示使用当前页面同源）
         const sourceUrl = ref(localStorage.getItem('melodyflow_source_url') || '');
         const sourceStatus = ref(null);
         const sourceCurrentPlatform = ref('kw');
@@ -2565,6 +2995,8 @@
             if (savedSettings) settings.value = JSON.parse(savedSettings);
             if (savedLang) currentLang.value = savedLang;
             if (savedTheme) theme.value = savedTheme;
+            const savedPlayCount = localStorage.getItem('melodyflow_playcount');
+            if (savedPlayCount) playCount.value = JSON.parse(savedPlayCount);
             const savedSource = localStorage.getItem('melodyflow_source_url');
             if (savedSource) sourceUrl.value = savedSource;
             
@@ -2585,6 +3017,7 @@
             localStorage.setItem('melodyflow_settings', JSON.stringify(settings.value));
             localStorage.setItem('melodyflow_lang', currentLang.value);
             localStorage.setItem('melodyflow_theme', theme.value);
+            localStorage.setItem('melodyflow_playcount', JSON.stringify(playCount.value));
           } catch (e) {
             console.error('Failed to save data:', e);
           }
@@ -2599,16 +3032,117 @@
           localStorage.setItem('melodyflow_source_url', sourceUrl.value);
         };
 
+        // 格式化睡眠定时器剩余时间
+        const formatSleepTimer = (seconds) => {
+          if (seconds <= 0) return '';
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        // 设置睡眠定时器
+        const setSleepTimer = (minutes) => {
+          if (minutes > 0) {
+            sleepTimer.value = minutes * 60;
+            sleepTimerRemaining.value = minutes * 60;
+          } else {
+            sleepTimer.value = 0;
+            sleepTimerRemaining.value = 0;
+          }
+        };
+
+        // 设置播放速率
+        const setPlaybackRate = (rate) => {
+          playbackRate.value = rate;
+          if (audio.value) audio.value.playbackRate = rate;
+        };
+
+        // A/B 重复功能
+        const setABStart = () => {
+          abRepeat.value.start = currentTime.value;
+          abRepeat.value.end = 0;
+          abRepeat.value.enabled = true;
+          abRepeat.value.settingStart = false;
+        };
+
+        const setABEnd = () => {
+          abRepeat.value.end = currentTime.value;
+          if (abRepeat.value.end <= abRepeat.value.start) {
+            alert('结束点必须大于开始点');
+            abRepeat.value.end = 0;
+          }
+        };
+
+        const toggleABRepeat = () => {
+          if (abRepeat.value.enabled && abRepeat.value.start > 0) {
+            abRepeat.value.enabled = !abRepeat.value.enabled;
+          } else {
+            abRepeat.value.start = currentTime.value;
+            abRepeat.value.enabled = true;
+            abRepeat.value.settingStart = true;
+          }
+        };
+
+        const clearABRepeat = () => {
+          abRepeat.value = { enabled: false, start: 0, end: 0, settingStart: false };
+        };
+
+        // 下载当前歌曲
+        const downloadCurrentSong = () => {
+          if (!currentSong.value) return;
+          const link = document.createElement('a');
+          link.href = currentSong.value.file;
+          link.download = `${currentSong.value.artist} - ${currentSong.value.title}.mp3`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+
+        // 快捷键处理
+        const handleKeydown = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          switch(e.code) {
+            case 'Space':
+              e.preventDefault();
+              togglePlay();
+              break;
+            case 'ArrowLeft':
+              if (e.shiftKey) audio.value.currentTime -= 10;
+              else prevSong();
+              break;
+            case 'ArrowRight':
+              if (e.shiftKey) audio.value.currentTime += 10;
+              else nextSong();
+              break;
+            case 'ArrowUp':
+              volume.value = Math.min(1, volume.value + 0.1);
+              audio.value.volume = volume.value;
+              break;
+            case 'ArrowDown':
+              volume.value = Math.max(0, volume.value - 0.1);
+              audio.value.volume = volume.value;
+              break;
+            case 'KeyM':
+              toggleMute();
+              break;
+            case 'KeyL':
+              toggleLoop();
+              break;
+            case 'KeyF':
+              showFullPlayer.value = !showFullPlayer.value;
+              break;
+          }
+        };
+
         // 测试音源连通性
         const testSourceUrl = async () => {
-          if (!sourceUrl.value) return;
           sourceStatus.value = { ok: false, msg: '正在测试...' };
           try {
             const base = sourceUrl.value.replace(/\/$/, '');
-            // 尝试访问根路径或 /info
-            const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) });
+            const testUrl = base ? `${base}/health` : '/health';
+            const res = await fetch(testUrl, { signal: AbortSignal.timeout(5000) });
             if (res.ok || res.status === 404) {
-              sourceStatus.value = { ok: true, msg: `连接成功 (${base})` };
+              sourceStatus.value = { ok: true, msg: base ? `连接成功 (${base})` : '使用同源自服务' };
             } else {
               sourceStatus.value = { ok: false, msg: `返回 ${res.status}，请确认服务是否正常运行` };
             }
@@ -2631,7 +3165,7 @@
           try {
             // lx-music-api-server 搜索接口
             // 常见格式: GET /api/search?source=kw&words=xxx&page=1&limit=30
-            const searchUrl = `${base}/api/search?source=${platform}&words=${keyword}&page=1&limit=30`;
+            const searchUrl = base ? `${base}/api/search?source=${platform}&words=${keyword}&page=1&limit=30` : `/api/search?source=${platform}&words=${keyword}&page=1&limit=30`;
             const res = await fetch(searchUrl, {
               signal: AbortSignal.timeout(10000),
               headers: { 'Accept': 'application/json' }
@@ -2687,7 +3221,8 @@
           if (item.flac || item.SQFileHash || item.size_flac || item.hasSQ) qualities.push('flac');
           if (item.hasOwnProperty('size_320mp3') || item.HQFileHash || item.hasHQ) qualities.push('320k');
           if (!qualities.length) qualities.push('128k');
-          return { id, name, artist, album, duration, platform, qualities, _raw: item };
+          const cover = item.cover || item.picUrl || item.album?.picUrl || null;
+          return { id, name, artist, album, duration, platform, qualities, cover, _raw: item };
         };
 
         // 获取在线播放链接
@@ -2714,23 +3249,72 @@
           throw new Error('无法获取播放链接，请检查音源服务是否支持该歌曲');
         };
 
+        // 获取在线歌曲封面
+        const getOnlineCover = async (platform, id) => {
+          const base = sourceUrl.value.replace(/\/$/, '');
+          try {
+            const res = await fetch(`${base}/api/music/cover?source=${platform}&id=${id}`, {
+              signal: AbortSignal.timeout(5000)
+            });
+            const data = await res.json();
+            return data.cover || null;
+          } catch { return null; }
+        };
+
+        // 获取在线歌曲歌词
+        const getOnlineLyrics = async (platform, id) => {
+          const base = sourceUrl.value.replace(/\/$/, '');
+          try {
+            const res = await fetch(`${base}/api/music/lyrics?source=${platform}&id=${id}`, {
+              signal: AbortSignal.timeout(5000)
+            });
+            const data = await res.json();
+            const lyrics = data.lyrics || [];
+            // 为每行歌词生成罗马音
+            return lyrics.map(line => ({
+              time: line.time,
+              text: line.text,
+              romaji: isJapanese(line.text) ? textToRomaji(line.text) : '',
+              translation: line.translation || ''
+            }));
+          } catch { return []; }
+        };
+
         // 播放在线歌曲
         const playOnlineSong = async (item) => {
           try {
             const result = await getOnlinePlayUrl(item);
+            // 并行获取封面和歌词
+            const [cover, lyrics] = await Promise.all([
+              getOnlineCover(item.platform, item.id),
+              getOnlineLyrics(item.platform, item.id)
+            ]);
+            // 检测歌词中是否包含日语
+            const hasJapanese = lyrics.some(l => isJapanese(l.text));
             const song = {
               id: `online_${item.platform}_${item.id}`,
               title: item.name,
               artist: item.artist,
               album: item.album,
               duration: item.duration,
-              cover: null,
+              cover: cover,
               file: result.url,
-              lyrics: [],
-              isJapanese: false,
+              lyrics: lyrics,
+              isJapanese: hasJapanese,
               isOnline: true,
-              quality: result.quality
+              quality: result.quality,
+              platform: item.platform,
+              onlineId: item.id
             };
+            // 自动开启罗马音（如果设置默认开启或歌曲是日语）
+            if (hasJapanese && settings.value.showRomajiByDefault) {
+              showRomaji.value = true;
+            }
+            // 如果有翻译，自动开启翻译显示
+            const hasTranslation = lyrics.some(l => l.translation);
+            if (hasTranslation) {
+              showTranslation.value = true;
+            }
             // 加入歌曲列表并播放
             const existing = songs.value.find(s => s.id === song.id);
             if (!existing) songs.value.push(song);
@@ -2928,20 +3512,34 @@
           currentSong.value = song;
           audio.value.src = song.file;
           audio.value.volume = isMuted.value ? 0 : volume.value;
+          audio.value.playbackRate = playbackRate.value;
           
-          // 检测是否日语
-          if (isJapanese(song.title) || isJapanese(song.artist) || isJapanese(song.album)) {
-            song.isJapanese = true;
+          // 检测是否日语（检测标题、艺术家、专辑和歌词）
+          const hasJapanese = isJapanese(song.title) || isJapanese(song.artist) ||
+                              isJapanese(song.album) || song.lyrics?.some(l => isJapanese(l.text));
+          song.isJapanese = hasJapanese;
+
+          // 根据设置和歌曲类型自动开启显示
+          if (hasJapanese && settings.value.showRomajiByDefault) {
+            showRomaji.value = true;
           }
-          
+          // 如果有翻译，自动开启
+          if (song.lyrics?.some(l => l.translation)) {
+            showTranslation.value = true;
+          }
+
           // 更新最近播放
           recentSongs.value = [song, ...recentSongs.value.filter(s => s.id !== song.id)].slice(0, 50);
-          
+
+          // 增加播放次数统计
+          if (!playCount.value[song.id]) playCount.value[song.id] = 0;
+          playCount.value[song.id]++;
+
           if (settings.value.autoPlay) {
             audio.value.play();
             isPlaying.value = true;
           }
-          
+
           saveData();
         };
 
@@ -2987,7 +3585,24 @@
 
         const updateTime = () => {
           currentTime.value = audio.value.currentTime;
-          
+
+          // A/B 重复检查
+          if (abRepeat.value.enabled && abRepeat.value.end > 0 && currentTime.value >= abRepeat.value.end) {
+            audio.value.currentTime = abRepeat.value.start;
+            audio.value.play();
+          }
+
+          // 睡眠定时器检查
+          if (sleepTimer.value > 0) {
+            sleepTimerRemaining.value--;
+            if (sleepTimerRemaining.value <= 0) {
+              audio.value.pause();
+              isPlaying.value = false;
+              sleepTimer.value = 0;
+              alert('睡眠定时器已触发，音乐已停止');
+            }
+          }
+
           // 更新歌词索引
           if (currentSong.value?.lyrics?.length) {
             const lyrics = currentSong.value.lyrics;
@@ -3161,6 +3776,7 @@
 
         onMounted(() => {
           loadData();
+          document.addEventListener('keydown', handleKeydown);
         });
 
         return {
@@ -3181,6 +3797,7 @@
           loopMode,
           showLyrics,
           showRomaji,
+          showTranslation,
           currentLyricIndex,
           searchQuery,
           filter,
@@ -3193,6 +3810,20 @@
           showCreatePlaylist,
           showAddToPlaylist,
           showLyricsEdit,
+          playbackRate,
+          sleepTimer,
+          sleepTimerRemaining,
+          showMiniPlayer,
+          playCount,
+          abRepeat,
+          formatSleepTimer,
+          setSleepTimer,
+          setPlaybackRate,
+          setABStart,
+          setABEnd,
+          toggleABRepeat,
+          clearABRepeat,
+          downloadCurrentSong,
           settings,
           // 在线音源
           sourceUrl,
