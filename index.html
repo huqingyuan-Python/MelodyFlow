@@ -3490,8 +3490,10 @@
         const avatarInput = ref(null);
         const isServerOnline = ref(false);        // 用户服务器是否在线
 
-        // 在线音源状态（空字符串表示使用当前页面同源）
-        const sourceUrl = ref(localStorage.getItem('melodyflow_source_url') || '');
+        // 在线音源状态
+        // 默认为空 = 使用当前页面同源（当用户直接访问 http://127.0.0.1:3000 时自动走该服务器）
+        // 用户也可以手动指定其他地址
+        const sourceUrl = ref(localStorage.getItem('melodyflow_source_url') || window.location.origin);
         const sourceStatus = ref(null);
         const sourceCurrentPlatform = ref('netease');
         const onlineSearchQuery = ref('');
@@ -4144,9 +4146,10 @@
           const keyword = onlineSearchQuery.value.trim();
 
           try {
-            // 优先走本地服务器（服务器端会处理各平台的特殊逻辑）
-            if (serverUrl.value) {
-              const res = await fetch(`${serverUrl.value}/api/search?keywords=${encodeURIComponent(keyword)}&platform=${platform}&limit=30`, { signal: AbortSignal.timeout(15000) });
+            // 优先走音乐服务器（端口3000）
+            const musicServer = (sourceUrl.value || '').trim();
+            if (musicServer) {
+              const res = await fetch(`${musicServer}/api/search?keywords=${encodeURIComponent(keyword)}&platform=${platform}&limit=30`, { signal: AbortSignal.timeout(15000) });
               if (res.ok) {
                 const json = await res.json();
                 if (json.success && json.list && json.list.length > 0) {
@@ -4200,6 +4203,10 @@
           if (playUrl && playUrl.startsWith('https://api.')) {
             playUrl = '/proxy/' + encodeURIComponent(playUrl);
           }
+          // 保留原始数据中的平台特殊字段（如酷狗 hash）
+          const extraFields = {};
+          if (item._kugouHash) extraFields._kugouHash = item._kugouHash;
+          if (item._kugou320Hash) extraFields._kugou320Hash = item._kugou320Hash;
 
           return {
             id,
@@ -4213,12 +4220,38 @@
             playUrl,
             lrc,
             apiBase,
-            _raw: item
+            _raw: item,
+            ...extraFields
           };
         };
 
         // 获取在线播放链接
         const getOnlinePlayUrl = async (song, quality = '320k') => {
+          // QQ音乐：使用专门的 vkey API
+          if (song.platform === 'tencent') {
+            const musicServer = (sourceUrl.value || '').trim() || 'http://127.0.0.1:3000';
+            const res = await fetch(`${musicServer}/api/tencent/url?songmid=${encodeURIComponent(song.id)}`, { signal: AbortSignal.timeout(15000) });
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && json.url) {
+                return { url: json.url, quality: json.quality || '128k' };
+              }
+            }
+            throw new Error('QQ音乐播放失败（非VIP或版权限制）');
+          }
+          // 酷狗：使用官方播放 API
+          if (song.platform === 'kugou' && (song._kugouHash || song._kugou320Hash || song.id)) {
+            const musicServer = (sourceUrl.value || '').trim() || 'http://127.0.0.1:3000';
+            const hash = song._kugou320Hash || song._kugouHash || song.id;
+            const res = await fetch(`${musicServer}/api/kugou/play?hash=${encodeURIComponent(hash)}`, { signal: AbortSignal.timeout(15000) });
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && json.url) {
+                return { url: json.url, quality: json.quality || '320k' };
+              }
+            }
+            throw new Error('酷狗播放失败（版权限制）');
+          }
           // 如果已有 /proxy/ 开头的本地代理 URL，直接返回
           if (song.playUrl && song.playUrl.startsWith('/proxy/')) {
             return { url: song.playUrl, quality: '320k' };

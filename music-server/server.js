@@ -156,6 +156,61 @@ async function qqMusicSearch(keyword, limit = 30) {
   });
 }
 
+// 酷狗音乐官方搜索（绕过 Meting-API 的空数据问题）
+async function kugouSearch(keyword, limit = 30) {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'mobilecdn.kugou.com',
+      path: `/api/v3/search/song?keyword=${encodeURIComponent(keyword)}&page=1&pagesize=${limit}&showtype=1`,
+      headers: {
+        'Referer': 'https://www.kugou.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 15000,
+      rejectUnauthorized: false  // 酷狗证书问题，忽略验证
+    };
+    https.get(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', chunk => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const songs = json?.data?.info || [];
+          resolve(songs.map(song => {
+            // 优先用 320hash，没有则用普通 hash
+            const hash = song['320hash'] || song.hash;
+            const fileExt = hash ? '.mp3' : '';
+            // 酷狗播放 URL：直接用 hash 拼接
+            const playUrl = hash
+              ? `https://wwwapi.kugou.com/yy/index.php?r=play/getdata&hash=${hash}&mid=${hash}`
+              : null;
+            const cover = song.trans_param?.union_cover?.replace(/\{size\}/g, '400') || null;
+            return {
+              id: song.hash || song['320hash'] || String(Math.random()),
+              name: song.songname || '未知歌曲',
+              artist: song.singername || '未知艺术家',
+              album: song.album_name || '',
+              duration: song.duration ? song.duration * 1000 : 0,
+              cover: cover,
+              url: playUrl,
+              lrc: null,
+              platform: 'kugou',
+              _kugouHash: hash,
+              _kugou320Hash: song['320hash']
+            };
+          }));
+        } catch (e) {
+          console.error('[Kugou] Search parse error:', e.message);
+          resolve([]);
+        }
+      });
+    }).on('error', (e) => {
+      console.error('[Kugou] Search request failed:', e.message);
+      resolve([]);
+    });
+  });
+}
+
 // HTTP 服务器
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -281,7 +336,14 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         msg: 'MelodyFlow Music API Server Running',
         vipSupport: true,
-        platforms: ['netease', 'tencent', 'kugou', 'kuwo', 'migu']
+        platforms: ['netease', 'tencent', 'kugou', 'kuwo', 'migu'],
+        platformStatus: {
+          netease: { search: true, play: true, note: '正常' },
+          tencent: { search: true, play: true, note: '正常（非VIP账号仅能获取VIP歌曲测试片段）' },
+          kugou: { search: true, play: true, note: '搜索正常，播放需VIP账号' },
+          kuwo: { search: false, play: false, note: 'API需登录验证，暂不支持' },
+          migu: { search: true, play: true, note: '正常（网易云数据转发）' }
+        }
       }));
       return;
     }
@@ -303,6 +365,13 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // 酷狗使用官方搜索API（不走 Meting-API，因为后者返回空）
+      if (platform === 'kugou') {
+        const kugouData = await kugouSearch(keywords, parseInt(query.limit) || 30);
+        res.end(JSON.stringify({ success: true, list: kugouData }));
+        return;
+      }
+
       const serverName = SERVER_MAP[platform] || 'netease';
       const result = await fetchWithFallback(`?server=${serverName}&type=search&id=${encodeURIComponent(keywords)}&limit=30`);
       if (Array.isArray(result)) {
@@ -311,6 +380,47 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: true, list: result.result.songs.map(s => normalizeSong(s, serverName)) }));
       } else {
         res.end(JSON.stringify({ success: true, list: [] }));
+      }
+      return;
+    }
+
+    // 酷狗播放URL（使用官方 API）
+    if (pathname === '/api/kugou/play') {
+      const hash = query.hash;
+      if (!hash) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: 'Missing hash parameter' }));
+        return;
+      }
+      try {
+        const data = await new Promise((resolve, reject) => {
+          const options = {
+            hostname: 'wwwapi.kugou.com',
+            path: `/yy/index.php?r=play/getdata&hash=${hash}&mid=${hash}`,
+            headers: {
+              'Referer': 'https://www.kugou.com',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Cookie': 'kg_mid=melodyflow_test'
+            },
+            timeout: 10000
+          };
+          https.get(options, (apiRes) => {
+            let body = '';
+            apiRes.on('data', chunk => body += chunk);
+            apiRes.on('end', () => {
+              try { resolve(JSON.parse(body)); } catch { resolve(null); }
+            });
+          }).on('error', reject);
+        });
+        const playUrl = data?.data?.play_url || data?.data?.play_backup_url || null;
+        const img = data?.data?.img || null;
+        if (playUrl) {
+          res.end(JSON.stringify({ success: true, url: playUrl, cover: img, quality: '320k' }));
+        } else {
+          res.end(JSON.stringify({ success: false, error: '无法获取播放链接', detail: data?.data?.err_msg || '' }));
+        }
+      } catch(e) {
+        res.end(JSON.stringify({ success: false, error: e.message }));
       }
       return;
     }
@@ -345,6 +455,74 @@ const server = http.createServer(async (req, res) => {
       const result = await fetchWithFallback(`?server=${serverName}&type=lrc&id=${id}`);
       const lrcText = typeof result === 'string' ? result : (result?.lrc || result || '');
       res.end(JSON.stringify({ success: true, lyrics: parseLRC(lrcText), translation: [] }));
+      return;
+    }
+
+    // QQ音乐播放URL（通过 vkey API 获取）
+    if (pathname === '/api/tencent/url') {
+      const songmid = query.songmid;
+      if (!songmid) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: 'Missing songmid parameter' }));
+        return;
+      }
+      try {
+        const data = await new Promise((resolve, reject) => {
+          const body = JSON.stringify({
+            req: {
+              module: 'vkey.GetVkeyServer',
+              method: 'CgiGetVkey',
+              param: {
+                guid: String(Math.floor(Math.random() * 9000000 + 1000000)),
+                songmid: [songmid],
+                songtype: [0],
+                uin: '1234567890',
+                loginkey: '',
+                device: 'PC',
+                platform: '20'
+              }
+            }
+          });
+          const options = {
+            hostname: 'u.y.qq.com',
+            path: '/cgi-bin/musicu.fcg',
+            method: 'POST',
+            headers: {
+              'Referer': 'https://y.qq.com',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body)
+            },
+            timeout: 10000
+          };
+          const req = https.request(options, (apiRes) => {
+            let data = '';
+            apiRes.on('data', chunk => data += chunk);
+            apiRes.on('end', () => {
+              try { resolve(JSON.parse(data)); } catch { resolve(null); }
+            });
+          });
+          req.on('error', reject);
+          req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+          req.write(body);
+          req.end();
+        });
+
+        const info = data?.req?.data?.midurlinfo?.[0];
+        if (info && info.purl) {
+          // 非VIP歌曲有 purl
+          res.end(JSON.stringify({ success: true, url: info.purl, quality: '128k' }));
+        } else if (data?.req?.data?.testfilewifi) {
+          // VIP歌曲返回 testfilewifi（需包含完整路径）
+          const base = data.req.data.sip?.[0] || 'http://aqqmusic.tc.qq.com/';
+          const url = base + data.req.data.testfilewifi.split('?')[0] + '?' + data.req.data.testfilewifi.split('?').slice(1).join('?');
+          res.end(JSON.stringify({ success: true, url, quality: '128k', note: 'vip-test-url' }));
+        } else {
+          res.end(JSON.stringify({ success: false, error: '无法获取播放链接（非VIP或版权限制）' }));
+        }
+      } catch(e) {
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
       return;
     }
 
@@ -413,7 +591,14 @@ const server = http.createServer(async (req, res) => {
       }
 
       // 只代理已知的音乐 API 域名
-      const allowedDomains = ['api.qijieya.cn', 'api.injahow.cn', 'meting.qjqq.cn'];
+      const allowedDomains = [
+        'api.qijieya.cn', 'api.injahow.cn', 'meting.qjqq.cn',
+        // QQ音乐 CDN
+        'aqqmusic.tc.qq.com', 'sjy6.stream.qqmusic.qq.com',
+        'dl.stream.qqmusic.qq.com', 'dl.qqmusic.qq.com'
+      ];
+      // 允许跟随重定向的音乐 CDN 域名（跟随最多3次）
+      const musicCDNDomains = ['m7.music.126.net', 'm8.music.126.net', 'm9.music.126.net', 'm10.music.126.net'];
       let hostname = '';
       try {
         const urlObj = new URL(targetUrl);
@@ -429,63 +614,86 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 发起代理请求
-      const proxyReq = https.get(targetUrl, {
-        headers: {
-          'Referer': 'https://y.qq.com',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': '*/*',
+      // 通用的流媒体请求函数（支持重定向跟随）
+      const streamMedia = (mediaUrl, redirectCount = 0) => {
+        const isHTTPS = mediaUrl.startsWith('https://');
+        const client = isHTTPS ? https : http;
+        const clientModule = client;
+
+        let reqHostname = '';
+        try { reqHostname = new URL(mediaUrl).hostname; } catch {}
+
+        // 如果是音乐CDN域名，也加入允许列表（仅限跟随重定向）
+        if (musicCDNDomains.includes(reqHostname)) {
+          // CORS 允许跨域
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Accept-Ranges', 'bytes');
         }
-      });
 
-      let responded = false;
-      let dataReceived = false;
-
-      const safeRespond = (statusCode, headers, body) => {
-        if (!responded) {
-          responded = true;
-          try {
-            if (body === null) {
-              res.writeHead(statusCode, headers);
-            } else {
-              res.end(body);
-            }
-          } catch (e) {
-            console.error('[Proxy] Write error:', e.message);
+        const req = clientModule.get(mediaUrl, {
+          headers: {
+            'Referer': 'https://y.qq.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': '*/*',
           }
-        }
+        });
+
+        let responded = false;
+        const safeRespond = (statusCode, headers, body) => {
+          if (!responded) {
+            responded = true;
+            try {
+              if (body === null) {
+                res.writeHead(statusCode, headers);
+              } else {
+                res.end(body);
+              }
+            } catch (e) {
+              console.error('[Proxy] Write error:', e.message);
+            }
+          }
+        };
+
+        req.on('response', (proxyRes) => {
+          const statusCode = proxyRes.statusCode || 200;
+
+          // 处理重定向（最多跟随3次）
+          if ((statusCode === 301 || statusCode === 302 || statusCode === 303 || statusCode === 307 || statusCode === 308) && redirectCount < 3) {
+            const location = proxyRes.headers['location'];
+            if (location) {
+              // 清理旧响应，防止重复写入
+              proxyRes.on('data', () => {});
+              proxyRes.on('end', () => {});
+              // 跟随重定向
+              const redirectUrl = new URL(location, mediaUrl).href;
+              console.log(`[Proxy] Following redirect to: ${redirectUrl}`);
+              streamMedia(redirectUrl, redirectCount + 1);
+              return;
+            }
+          }
+
+          const contentType = proxyRes.headers['content-type'] || 'audio/mpeg';
+          safeRespond(statusCode, {
+            'Content-Type': contentType,
+            'Access-Control-Allow-Origin': '*',
+            'Accept-Ranges': 'bytes',
+          }, null);
+
+          proxyRes.pipe(res);
+        });
+
+        req.on('error', (e) => {
+          console.error('[Proxy] Fetch error:', e.message);
+          safeRespond(502, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy fetch failed: ' + e.message }));
+        });
+
+        req.on('timeout', () => {
+          req.destroy();
+          safeRespond(504, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy timeout' }));
+        });
       };
 
-      proxyReq.on('response', (proxyRes) => {
-        const contentType = proxyRes.headers['content-type'] || 'audio/mpeg';
-        safeRespond(proxyRes.statusCode || 200, {
-          'Content-Type': contentType,
-          'Access-Control-Allow-Origin': '*',
-          'Accept-Ranges': 'bytes',
-        }, null);
-
-        if (!responded) {
-          proxyRes.on('data', () => { dataReceived = true; });
-          proxyRes.on('end', () => {
-            if (!dataReceived && !responded) {
-              // 上游返回了空响应，说明该平台播放暂不可用
-              safeRespond(204, { 'Content-Type': 'application/json' }, '');
-            }
-          });
-          proxyRes.pipe(res);
-        }
-      });
-
-      proxyReq.on('error', (e) => {
-        console.error('[Proxy] Fetch error:', e.message);
-        safeRespond(502, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy fetch failed' }));
-      });
-
-      proxyReq.on('timeout', () => {
-        proxyReq.destroy();
-        safeRespond(504, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy timeout' }));
-      });
-
+      streamMedia(targetUrl);
       return;
     }
 
