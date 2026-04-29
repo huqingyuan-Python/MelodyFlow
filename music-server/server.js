@@ -6,9 +6,13 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
+const fs = require('fs');
+const path = require('path');
 
 // 配置
 const PORT = process.env.PORT || 3000;
+// index.html 放在 music-server 同级目录（即项目根目录）
+const ROOT_DIR = path.join(__dirname, '..');
 
 // 多个免费 Meting-API 源，依次尝试（支持VIP解析、酷狗、酷我、咪咕）
 const METING_APIS = [
@@ -127,6 +131,23 @@ const server = http.createServer(async (req, res) => {
   const query = parsedUrl.query;
 
   try {
+    // =============================================
+    // 静态文件服务（直接访问首页用）
+    // =============================================
+    if (pathname === '/' || pathname === '/index.html') {
+      const filePath = path.join(ROOT_DIR, 'index.html');
+      fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+          res.writeHead(500);
+          res.end('Cannot load index.html');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(data);
+      });
+      return;
+    }
+
     // =============================================
     // 标准 Meting-API 格式支持
     // GET /?type=search&id=关键词&server=netease&limit=30

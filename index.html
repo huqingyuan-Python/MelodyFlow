@@ -3688,7 +3688,6 @@
 
         // 检测用户服务器
         const detectUserServer = async () => {
-          // 先尝试本机
           const tryUrl = async (url) => {
             try {
               const res = await fetch(`${url}/api/server-info`, { signal: AbortSignal.timeout(2000) });
@@ -3700,13 +3699,25 @@
             return null;
           };
 
-          // 尝试 localhost
+          // 尝试 localhost（同一台电脑）
           let info = await tryUrl('http://127.0.0.1:3001');
           if (info) {
-            serverUrl.value = `http://127.0.0.1:3001`;
+            serverUrl.value = 'http://127.0.0.1:3001';
             isServerOnline.value = true;
             saveSourceUrl();
             return;
+          }
+
+          // 尝试当前页面的主机 IP（局域网其他设备访问时用）
+          const currentHost = window.location.hostname;
+          if (currentHost !== '127.0.0.1' && currentHost !== 'localhost') {
+            info = await tryUrl(`http://${currentHost}:3001`);
+            if (info) {
+              serverUrl.value = `http://${currentHost}:3001`;
+              isServerOnline.value = true;
+              saveSourceUrl();
+              return;
+            }
           }
 
           // 尝试已保存的地址
