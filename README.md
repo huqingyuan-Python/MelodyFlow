@@ -1,4 +1,4 @@
-# MelodyFlow - 本地音乐播放器
+# MelodyFlow Music - 本地音乐播放器
 
 <div align="center">
   <img src="https://img.shields.io/badge/Platform-Web-blue.svg" alt="Platform">

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MelodyFlow - 本地音乐播放器</title>
+  <title>MelodyFlow Music - 本地音乐播放器</title>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
@@ -1550,6 +1550,50 @@
       animation: fadeIn 0.3s ease;
     }
 
+    /* 顶部导航栏 */
+    .full-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+    }
+
+    .full-topbar-title {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .full-topbar-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      backdrop-filter: blur(20px);
+    }
+
+    .full-topbar-btn:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.1);
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
@@ -1636,6 +1680,12 @@
 
     .full-cover.spinning {
       animation: coverSpin 8s linear infinite;
+      animation-play-state: running;
+    }
+
+    .full-cover:not(.spinning) {
+      animation: coverSpin 8s linear infinite;
+      animation-play-state: paused;
     }
 
     @keyframes coverSpin {
@@ -1977,7 +2027,7 @@
       
       <div class="search-box">
         <i class="fas fa-search"></i>
-        <input type="text" v-model="searchQuery" :placeholder="t.search">
+        <input type="text" v-model="searchQuery" :placeholder="t.search" @keyup.enter="triggerOnlineSearch">
       </div>
 
       <select class="lang-select" v-model="currentLang" @change="saveSettings">
@@ -2201,11 +2251,11 @@
           <div class="discover-section">
             <h2 class="section-title" style="margin-bottom:20px;">🔍 在线搜索</h2>
 
-            <!-- 音源未配置提示 -->
-            <div v-if="!sourceUrl" class="empty-state">
+            <!-- 音源未配置提示 - 现在不需要配置了 -->
+            <div v-if="false" class="empty-state">
               <i class="fas fa-plug"></i>
               <h3>未配置音源</h3>
-              <p>请先运行「启动服务.bat」启动本地音源服务，再在「设置」页面配置地址</p>
+              <p>请双击运行「启动服务.bat」，然后在设置页面配置地址为 <code style="background:#333;padding:2px 6px;border-radius:4px;">http://127.0.0.1:3000</code></p>
               <button class="btn btn-primary-submit" @click="currentView = 'settings'">
                 <i class="fas fa-cog"></i> 去设置
               </button>
@@ -2279,11 +2329,11 @@
 
             <div class="setting-item">
               <div class="setting-info">
-                <h4>🎵 洛雪音乐音源</h4>
-                <p>填入 lx-music-api-server 的地址，即可在线搜索和播放音乐</p>
+                <h4>🎵 音源服务</h4>
+                <p>MelodyFlow Music 使用在线 API 直接搜索，支持<strong style="color:#30d158">VIP曲目直接听</strong>！无需启动任何服务。
               </div>
               <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;max-width:360px;">
-                <input type="text" v-model="sourceUrl" placeholder="http://127.0.0.1:9763"
+                <input type="text" v-model="sourceUrl" placeholder="（无需配置）"
                   style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:8px;font-size:13px;width:260px;outline:none;"
                   @change="saveSourceUrl">
                 <button class="btn btn-secondary-submit" @click="testSourceUrl">
@@ -2435,16 +2485,18 @@
         </div>
 
         <!-- 睡眠定时器 -->
-        <div class="sleep-timer-control">
-          <button class="control-btn" :class="{active: sleepTimer > 0}" title="睡眠定时器" @click="sleepTimer > 0 ? setSleepTimer(0) : setSleepTimer(15)">
+        <div class="sleep-timer-control" v-click-outside="() => showSleepPopup = false">
+          <button class="control-btn" :class="{active: sleepTimer > 0}" title="睡眠定时器" @click="showSleepPopup = !showSleepPopup">
             <i class="fas fa-moon"></i>
             <span v-if="sleepTimer > 0" class="sleep-timer-badge">{{ formatSleepTimer(sleepTimerRemaining) }}</span>
           </button>
-          <div class="sleep-timer-popup" v-if="sleepTimer === 0">
-            <button @click="setSleepTimer(15)">15分钟</button>
-            <button @click="setSleepTimer(30)">30分钟</button>
-            <button @click="setSleepTimer(45)">45分钟</button>
-            <button @click="setSleepTimer(60)">60分钟</button>
+          <div class="sleep-timer-popup" v-if="showSleepPopup">
+            <button @click="setSleepTimer(15); showSleepPopup = false">15分钟</button>
+            <button @click="setSleepTimer(30); showSleepPopup = false">30分钟</button>
+            <button @click="setSleepTimer(45); showSleepPopup = false">45分钟</button>
+            <button @click="setSleepTimer(60); showSleepPopup = false">60分钟</button>
+            <button v-if="sleepTimer > 0" @click="setSleepTimer(0); showSleepPopup = false" style="color: #ff453a;">取消定时</button>
+            <button @click="showSleepPopup = false" style="color: var(--text-tertiary); border-top: 1px solid var(--border); margin-top: 4px;">关闭</button>
           </div>
         </div>
       </div>
@@ -2453,6 +2505,16 @@
     <!-- 全屏播放器 (左侧封面 + 右侧歌词 + 底部控制栏) -->
     <div class="full-player" v-if="showFullPlayer && currentSong" @click.self="showFullPlayer = false">
       <div class="full-player-bg" :class="{'no-cover': !currentSong.cover}" :style="currentSong.cover ? `background-image: url(${currentSong.cover})` : ''"></div>
+      <!-- 顶部导航栏 -->
+      <div class="full-topbar">
+        <button class="full-topbar-btn" @click="showMiniPlayer = true; showFullPlayer = false" title="收起">
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <span class="full-topbar-title">{{ currentSong.title }}</span>
+        <button class="full-topbar-btn" @click="showFullPlayer = false" title="关闭">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
       <div class="full-player-content">
         <!-- 左侧：封面 + 歌曲信息 -->
         <div class="full-player-left">
@@ -2470,17 +2532,11 @@
             <div class="full-song-album">{{ currentSong.album }}</div>
           </div>
           <div class="full-cover-actions">
-            <button class="full-action-btn" @click="toggleFavorite(currentSong)" v-if="currentSong">
-              <i :class="isFavorite(currentSong) ? 'fas' : 'far'" :style="isFavorite(currentSong) ? 'color: #fc3c44' : ''"></i>
+            <button class="full-action-btn" @click="toggleFavorite(currentSong)" v-if="currentSong" title="收藏">
+              <i :class="isFavorite(currentSong) ? 'fas fa-heart' : 'far fa-heart'" :style="isFavorite(currentSong) ? 'color: #fc3c44' : ''"></i>
             </button>
-            <button class="full-action-btn" @click="showAddToPlaylist = true">
+            <button class="full-action-btn" @click="showAddToPlaylist = true" title="添加到播放列表">
               <i class="fas fa-plus"></i>
-            </button>
-            <button class="full-action-btn" @click="showMiniPlayer = true; showFullPlayer = false">
-              <i class="fas fa-chevron-down"></i>
-            </button>
-            <button class="full-action-btn" @click="showFullPlayer = false">
-              <i class="fas fa-times"></i>
             </button>
           </div>
         </div>
@@ -2882,6 +2938,19 @@
     };
 
     createApp({
+      directives: {
+        'click-outside': {
+          mounted(el, binding) {
+            el._clickOutsideHandler = (e) => {
+              if (!el.contains(e.target)) binding.value(e);
+            };
+            document.addEventListener('click', el._clickOutsideHandler);
+          },
+          unmounted(el) {
+            document.removeEventListener('click', el._clickOutsideHandler);
+          }
+        }
+      },
       setup() {
         const audio = ref(null);
         const fileInput = ref(null);
@@ -2920,6 +2989,7 @@
         const sleepTimer = ref(0);  // 0表示关闭睡眠定时器
         const sleepTimerRemaining = ref(0);  // 剩余秒数
         const showMiniPlayer = ref(false);
+        const showSleepPopup = ref(false);  // 睡眠定时器弹窗
         const playCount = ref({});  // 播放次数统计
         // A/B 重复
         const abRepeat = ref({ enabled: false, start: 0, end: 0, settingStart: false });
@@ -2934,18 +3004,15 @@
         // 在线音源状态（空字符串表示使用当前页面同源）
         const sourceUrl = ref(localStorage.getItem('melodyflow_source_url') || '');
         const sourceStatus = ref(null);
-        const sourceCurrentPlatform = ref('kw');
+        const sourceCurrentPlatform = ref('netease');
         const onlineSearchQuery = ref('');
         const onlineResults = ref([]);
         const onlineSearching = ref(false);
         const onlineSearchError = ref('');
         const onlineSearched = ref(false);
         const sourcePlatforms = [
-          { value: 'kw', label: '酷我' },
-          { value: 'kg', label: '酷狗' },
-          { value: 'tx', label: 'QQ音乐' },
-          { value: 'wy', label: '网易云' },
-          { value: 'mg', label: '咪咕' }
+          { value: 'netease', label: '网易云音乐', vip: true },
+          { value: 'tencent', label: 'QQ音乐', vip: true }
         ];
 
         // 计算属性
@@ -3138,58 +3205,92 @@
         const testSourceUrl = async () => {
           sourceStatus.value = { ok: false, msg: '正在测试...' };
           try {
-            const base = sourceUrl.value.replace(/\/$/, '');
-            const testUrl = base ? `${base}/health` : '/health';
+            const base = sourceUrl.value.replace(/\/$/, '') || 'http://127.0.0.1:3000';
+            const testUrl = `${base}/health`;
             const res = await fetch(testUrl, { signal: AbortSignal.timeout(5000) });
             if (res.ok || res.status === 404) {
-              sourceStatus.value = { ok: true, msg: base ? `连接成功 (${base})` : '使用同源自服务' };
+              sourceStatus.value = { ok: true, msg: `连接成功 - ${base}` };
             } else {
-              sourceStatus.value = { ok: false, msg: `返回 ${res.status}，请确认服务是否正常运行` };
+              sourceStatus.value = { ok: false, msg: `返回 ${res.status}，请确认「启动服务.bat」是否正在运行` };
             }
           } catch(e) {
-            sourceStatus.value = { ok: false, msg: `连接失败: ${e.message}` };
+            sourceStatus.value = { ok: false, msg: `连接失败: ${e.message}。请确保已运行「启动服务.bat」` };
           }
         };
 
-        // 在线搜索
+        // Meting-API 地址（免费支持VIP解析），多个备用
+        const METING_APIS = [
+          'https://api.qijieya.cn/meting/',
+          'https://api.injahow.cn/meting/',
+          'https://meting.qjqq.cn/'
+        ];
+
+        async function fetchMetingAPI(url) {
+          const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        }
+
+        async function searchMetingWithFallback(type, id, server, limit = 30) {
+          let lastErr;
+          for (const base of METING_APIS) {
+            try {
+              const url = `${base}?type=${type}&id=${encodeURIComponent(id)}&server=${server}&limit=${limit}`;
+              const data = await fetchMetingAPI(url);
+              // 检查是否有有效结果（不是空数组/空对象）
+              const list = Array.isArray(data) ? data : (data.songs || data.result?.songs || []);
+              if (list.length > 0) return { data, base };
+              // 空结果也算成功（就是没有结果）
+              return { data, base };
+            } catch(e) {
+              lastErr = e;
+              console.warn(`Meting API ${base} failed:`, e.message);
+            }
+          }
+          throw lastErr || new Error('所有 Meting API 均不可用');
+        }
+
+        // 在线搜索 - 直接调用 Meting-API
+        const triggerOnlineSearch = () => {
+          if (!searchQuery.value.trim()) return;
+          onlineSearchQuery.value = searchQuery.value;
+          currentView.value = 'discover';
+          searchOnline();
+        };
+
         const searchOnline = async () => {
-          if (!onlineSearchQuery.value.trim() || !sourceUrl.value) return;
+          if (!onlineSearchQuery.value.trim()) return;
           onlineSearching.value = true;
           onlineSearchError.value = '';
           onlineResults.value = [];
           onlineSearched.value = false;
-          const base = sourceUrl.value.replace(/\/$/, '');
+
           const platform = sourceCurrentPlatform.value;
-          const keyword = encodeURIComponent(onlineSearchQuery.value.trim());
+          const server = platform === 'tencent' ? 'tencent' : 'netease';
+          const keyword = onlineSearchQuery.value.trim();
 
           try {
-            // lx-music-api-server 搜索接口
-            // 常见格式: GET /api/search?source=kw&words=xxx&page=1&limit=30
-            const searchUrl = base ? `${base}/api/search?source=${platform}&words=${keyword}&page=1&limit=30` : `/api/search?source=${platform}&words=${keyword}&page=1&limit=30`;
-            const res = await fetch(searchUrl, {
-              signal: AbortSignal.timeout(10000),
-              headers: { 'Accept': 'application/json' }
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const { data, base } = await searchMetingWithFallback('search', keyword, server, 30);
 
-            // 兼容多种返回格式
+            // 解析搜索结果
             let list = [];
-            if (data.data) {
-              list = Array.isArray(data.data) ? data.data : (data.data.list || data.data.songs || []);
-            } else if (Array.isArray(data)) {
+            if (Array.isArray(data)) {
               list = data;
+            } else if (data.songs) {
+              list = data.songs;
             } else if (data.result) {
-              list = data.result.songs || data.result || [];
-            } else if (data.list) {
-              list = data.list;
+              list = data.result.songs || [];
             }
 
-            onlineResults.value = list.map(item => normalizeSearchResult(item, platform));
+            if (list.length === 0) {
+              onlineSearchError.value = `未找到相关歌曲（使用 ${server} 平台），试试其他关键词或切换平台`;
+            }
+
+            onlineResults.value = list.map(item => normalizeSearchResult(item, platform, base));
             onlineSearched.value = true;
-            if (!list.length) onlineSearchError.value = '';
           } catch (e) {
-            onlineSearchError.value = `搜索失败: ${e.message}。请检查音源地址是否正确，或音源服务器是否支持搜索接口。`;
+            console.error('Search error:', e);
+            onlineSearchError.value = `搜索失败: ${e.message}。请检查网络连接后重试`;
             onlineSearched.value = true;
           } finally {
             onlineSearching.value = false;
@@ -3197,87 +3298,125 @@
         };
 
         // 标准化不同平台返回的数据格式
-        const normalizeSearchResult = (item, platform) => {
-          const name = item.name || item.title || item.songname || item.SongName || item.Name || '未知歌曲';
-          let artist = '未知艺术家';
-          if (item.artist) artist = item.artist;
-          else if (item.artistName) artist = item.artistName;
-          else if (item.singer) {
-            artist = Array.isArray(item.singer)
-              ? item.singer.map(s => s.name || s).join(' / ')
-              : (item.singer.name || item.singer);
-          } else if (item.Singers) {
-            artist = Array.isArray(item.Singers)
-              ? item.Singers.map(s => s.name || s).join(' / ')
-              : item.Singers;
-          } else if (item.ar) {
-            artist = Array.isArray(item.ar) ? item.ar.map(a => a.name).join(' / ') : item.ar;
-          }
-          const album = item.album?.name || item.album || item.albumName || item.AlbumName || item.al?.name || '';
-          const duration = item.duration || item.interval || item.Duration || 0;
-          const id = item.id || item.songid || item.Id || item.musicId || item.hash || String(Math.random());
-          const qualities = [];
-          if (item.flac24bit || item.size_hires || item.hasSQ24bit) qualities.push('flac24bit');
-          if (item.flac || item.SQFileHash || item.size_flac || item.hasSQ) qualities.push('flac');
-          if (item.hasOwnProperty('size_320mp3') || item.HQFileHash || item.hasHQ) qualities.push('320k');
-          if (!qualities.length) qualities.push('128k');
-          const cover = item.cover || item.picUrl || item.album?.picUrl || null;
-          return { id, name, artist, album, duration, platform, qualities, cover, _raw: item };
+        const normalizeSearchResult = (item, platform, metingBase) => {
+          // Meting-API 返回格式
+          const name = item.name || item.title || '未知歌曲';
+          const artist = item.artist || '未知艺术家';
+          const id = item.id || String(Math.random());
+          // url, pic, lrc 是获取资源的 API 地址
+          const playUrl = item.url || null;
+          const cover = item.pic || null;
+          const lrc = item.lrc || null;
+          // 保存使用的 API base，用于后续获取播放地址
+          const apiBase = metingBase || METING_APIS[0];
+
+          return {
+            id,
+            name,
+            artist,
+            album: item.album || '',
+            duration: item.duration || 0,
+            platform,
+            qualities: ['320k'],
+            cover,
+            playUrl,
+            lrc,
+            apiBase,
+            _raw: item
+          };
         };
 
         // 获取在线播放链接
-        const getOnlinePlayUrl = async (song, quality = '128k') => {
-          const base = sourceUrl.value.replace(/\/$/, '');
-          const qualities = ['flac24bit', 'flac', '320k', '128k'];
-          // 按质量降级尝试
-          const tryQualities = song.qualities.length ? song.qualities : qualities;
-          for (const q of tryQualities) {
+        const getOnlinePlayUrl = async (song, quality = '320k') => {
+          // 如果 Meting-API 直接返回了播放URL
+          if (song.playUrl && song.playUrl.startsWith('http')) {
+            return { url: song.playUrl, quality: '320k' };
+          }
+          // 否则通过 API 动态获取（使用搜索时用的 apiBase，自动尝试备用）
+          const server = song.platform === 'tencent' ? 'tencent' : 'netease';
+          const bases = song.apiBase ? [song.apiBase, ...METING_APIS.filter(b => b !== song.apiBase)] : METING_APIS;
+          let lastErr;
+          for (const base of bases) {
             try {
-              const url = `${base}/api/music/urls?source=${song.platform}&id=${song.id}&quality=${q}`;
-              const res = await fetch(url, {
-                signal: AbortSignal.timeout(8000),
-                headers: { 'Accept': 'application/json' }
-              });
+              const url = `${base}?type=url&id=${song.id}&server=${server}&br=320`;
+              const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const data = await res.json();
+              const playUrl = Array.isArray(data) ? data[0]?.url : data?.url;
+              if (playUrl && playUrl.startsWith('http')) {
+                return { url: playUrl, quality: '320k' };
+              }
+            } catch(e) {
+              lastErr = e;
+            }
+          }
+          throw lastErr || new Error('无法获取播放链接，请尝试其他歌曲');
+        };
+
+        // 获取在线歌曲封面 - 直接使用保存的URL
+        const getOnlineCover = async (platform, id) => {
+          // Meting-API 返回的 pic 字段是获取封面的 URL
+          // 直接使用图片代理或原始URL
+          const song = onlineResults.value.find(s => s.id === id);
+          if (song && song.cover) {
+            return song.cover;
+          }
+          return null;
+        };
+
+        // 获取在线歌曲歌词 - 支持直接URL或动态获取
+        const getOnlineLyrics = async (platform, id, song) => {
+          const lrcSource = song?.lrc;
+          const server = platform === 'tencent' ? 'tencent' : 'netease';
+
+          const parseLrcText = (lrcText) => {
+            const lines = lrcText.split('\n');
+            const lyrics = [];
+            for (const line of lines) {
+              const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/);
+              if (match) {
+                const min = parseInt(match[1]);
+                const sec = parseInt(match[2]);
+                const ms = parseInt(match[3].padEnd(3, '0'));
+                const time = min * 60 + sec + ms / 1000;
+                const text = match[4].trim();
+                if (text) {
+                  lyrics.push({
+                    time,
+                    text,
+                    romaji: isJapanese(text) ? textToRomaji(text) : '',
+                    translation: ''
+                  });
+                }
+              }
+            }
+            return lyrics;
+          };
+
+          // 如果有直接的 lrc URL
+          if (lrcSource && lrcSource.startsWith('http')) {
+            try {
+              const res = await fetch(lrcSource, { signal: AbortSignal.timeout(8000) });
+              if (res.ok) {
+                const lrcText = await res.text();
+                return parseLrcText(lrcText);
+              }
+            } catch { /* 降级到API获取 */ }
+          }
+
+          // 通过 Meting API 获取歌词
+          const bases = song?.apiBase ? [song.apiBase, ...METING_APIS.filter(b => b !== song.apiBase)] : METING_APIS;
+          for (const base of bases) {
+            try {
+              const url = `${base}?type=lrc&id=${id}&server=${server}`;
+              const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
               if (!res.ok) continue;
               const data = await res.json();
-              const playUrl = data.data || data.url || data.playUrl || data.link;
-              if (playUrl && typeof playUrl === 'string' && playUrl.startsWith('http')) {
-                return { url: playUrl, quality: q };
-              }
-            } catch(e) { continue; }
+              const lrcText = Array.isArray(data) ? data[0]?.lyric : data?.lyric;
+              if (lrcText) return parseLrcText(lrcText);
+            } catch { /* 尝试下一个 */ }
           }
-          throw new Error('无法获取播放链接，请检查音源服务是否支持该歌曲');
-        };
-
-        // 获取在线歌曲封面
-        const getOnlineCover = async (platform, id) => {
-          const base = sourceUrl.value.replace(/\/$/, '');
-          try {
-            const res = await fetch(`${base}/api/music/cover?source=${platform}&id=${id}`, {
-              signal: AbortSignal.timeout(5000)
-            });
-            const data = await res.json();
-            return data.cover || null;
-          } catch { return null; }
-        };
-
-        // 获取在线歌曲歌词
-        const getOnlineLyrics = async (platform, id) => {
-          const base = sourceUrl.value.replace(/\/$/, '');
-          try {
-            const res = await fetch(`${base}/api/music/lyrics?source=${platform}&id=${id}`, {
-              signal: AbortSignal.timeout(5000)
-            });
-            const data = await res.json();
-            const lyrics = data.lyrics || [];
-            // 为每行歌词生成罗马音
-            return lyrics.map(line => ({
-              time: line.time,
-              text: line.text,
-              romaji: isJapanese(line.text) ? textToRomaji(line.text) : '',
-              translation: line.translation || ''
-            }));
-          } catch { return []; }
+          return [];
         };
 
         // 播放在线歌曲
@@ -3287,7 +3426,7 @@
             // 并行获取封面和歌词
             const [cover, lyrics] = await Promise.all([
               getOnlineCover(item.platform, item.id),
-              getOnlineLyrics(item.platform, item.id)
+              getOnlineLyrics(item.platform, item.id, item)
             ]);
             // 检测歌词中是否包含日语
             const hasJapanese = lyrics.some(l => isJapanese(l.text));
@@ -3814,6 +3953,7 @@
           sleepTimer,
           sleepTimerRemaining,
           showMiniPlayer,
+          showSleepPopup,
           playCount,
           abRepeat,
           formatSleepTimer,
@@ -3838,6 +3978,7 @@
           saveSourceUrl,
           testSourceUrl,
           searchOnline,
+          triggerOnlineSearch,
           playOnlineSong,
           addOnlineSongToLib,
           t,

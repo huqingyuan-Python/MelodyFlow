@@ -1,4 +1,4 @@
-# MelodyFlow - ローカル音楽プレイヤー
+# MelodyFlow Music - ローカル音楽プレイヤー
 
 <div align="center">
   <img src="https://img.shields.io/badge/Platform-Web-blue.svg" alt="Platform">
