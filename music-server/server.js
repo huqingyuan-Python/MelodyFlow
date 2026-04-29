@@ -14,11 +14,10 @@ const PORT = process.env.PORT || 3000;
 // index.html 放在 music-server 同级目录（即项目根目录）
 const ROOT_DIR = path.join(__dirname, '..');
 
-// 多个免费 Meting-API 源，依次尝试（支持VIP解析、酷狗、酷我、咪咕）
+// 多个免费 Meting-API 源，依次尝试
+// 注意：injahow 和 qjqq 已失效，只保留 qijieya
 const METING_APIS = [
-  'https://api.injahow.cn/meting/',
-  'https://api.qijieya.cn/meting/',
-  'https://meting.qjqq.cn/'
+  'https://api.qijieya.cn/meting/'
 ];
 
 // 平台名称映射（URL 参数名）
@@ -111,6 +110,50 @@ function parseLRC(lrcText) {
     }
   }
   return result;
+}
+
+// QQ音乐直接搜索（绕过 Meting-API 的限制）
+async function qqMusicSearch(keyword, limit = 30) {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'shc.y.qq.com',
+      path: `/soso/fcgi-bin/search_for_qq_cp?g_tk=5381&w=${encodeURIComponent(keyword)}&format=json&p=1&n=${limit}`,
+      headers: {
+        'Referer': 'https://y.qq.com',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 15000
+    };
+    https.get(options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', chunk => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const songs = json?.data?.song?.list || [];
+          resolve(songs.map(song => ({
+            id: song.songmid,
+            name: song.songname,
+            artist: (song.singer || []).map(s => s.name).join(' / '),
+            album: song.albumname,
+            duration: song.interval ? song.interval * 1000 : 0,
+            cover: song.albummid
+              ? `https://y.gtimg.cn/music/photo_new/T002R300x300M000${song.albummid}.jpg`
+              : null,
+            url: null, // 播放需要 vkey，暂时无法提供
+            lrc: null,
+            platform: 'tencent'
+          })));
+        } catch (e) {
+          console.error('[QQ Music] Search parse error:', e.message);
+          resolve([]);
+        }
+      });
+    }).on('error', (e) => {
+      console.error('[QQ Music] Search request failed:', e.message);
+      resolve([]);
+    });
+  });
 }
 
 // HTTP 服务器
@@ -252,6 +295,14 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, error: 'Missing keywords parameter' }));
         return;
       }
+
+      // QQ音乐直接使用官方搜索API（不走 Meting-API）
+      if (platform === 'tencent') {
+        const qqData = await qqMusicSearch(keywords, parseInt(query.limit) || 30);
+        res.end(JSON.stringify({ success: true, list: qqData }));
+        return;
+      }
+
       const serverName = SERVER_MAP[platform] || 'netease';
       const result = await fetchWithFallback(`?server=${serverName}&type=search&id=${encodeURIComponent(keywords)}&limit=30`);
       if (Array.isArray(result)) {
@@ -348,7 +399,88 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+// =============================================
+// 流媒体代理端点 - 解决酷狗等平台播放问题
+// 将第三方 API 的 type=url 代理为真实音频流
+// =============================================
+    if (pathname.startsWith('/proxy/')) {
+      const encodedUrl = pathname.slice('/proxy/'.length);
+      const targetUrl = decodeURIComponent(encodedUrl);
+      if (!targetUrl || !targetUrl.startsWith('http')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid proxy URL' }));
+        return;
+      }
+
+      // 只代理已知的音乐 API 域名
+      const allowedDomains = ['api.qijieya.cn', 'api.injahow.cn', 'meting.qjqq.cn'];
+      let hostname = '';
+      try {
+        const urlObj = new URL(targetUrl);
+        hostname = urlObj.hostname;
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid URL' }));
+        return;
+      }
+      if (!allowedDomains.includes(hostname)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Proxy not allowed for this domain' }));
+        return;
+      }
+
+      // 发起代理请求
+      const proxyReq = https.get(targetUrl, {
+        headers: {
+          'Referer': 'https://y.qq.com',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': '*/*',
+          'Accept-Encoding': 'identity',
+        }
+      });
+
+      let responded = false;
+      const safeRespond = (statusCode, headers, body) => {
+        if (!responded) {
+          responded = true;
+          try {
+            res.writeHead(statusCode, headers);
+            res.end(body);
+          } catch (e) {
+            console.error('[Proxy] Write error:', e.message);
+          }
+        }
+      };
+
+      proxyReq.on('response', (proxyRes) => {
+        const contentType = proxyRes.headers['content-type'] || 'audio/mpeg';
+        safeRespond(proxyRes.statusCode || 200, {
+          'Content-Type': contentType,
+          'Access-Control-Allow-Origin': '*',
+          'Content-Length': proxyRes.headers['content-length'],
+          'Accept-Ranges': 'bytes',
+        }, null);
+        if (!responded) {
+          proxyRes.pipe(res);
+        }
+      });
+
+      proxyReq.on('error', (e) => {
+        console.error('[Proxy] Fetch error:', e.message);
+        safeRespond(502, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy fetch failed' }));
+      });
+
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        safeRespond(504, { 'Content-Type': 'application/json' }, JSON.stringify({ error: 'Proxy timeout' }));
+      });
+
+      return;
+    }
+
+    // =============================================
     // 未知路由
+    // =============================================
     res.writeHead(404);
     res.end(JSON.stringify({ success: false, error: 'Not found' }));
 
@@ -363,12 +495,8 @@ server.listen(PORT, () => {
   console.log(`
 ========================================
    MelodyFlow 音乐API服务  (端口 ${PORT})
-   支持标准 Meting-API 格式
-   备用源: injahow / qijieya / qjqq
-========================================
-   服务地址: http://127.0.0.1:${PORT}
-   标准格式: /?type=search&id=关键词&server=netease
-   健康检查: /health
+   支持: 网易云/QQ音乐/酷狗/酷我/咪咕
+   直接搜索: http://127.0.0.1:${PORT}
 ========================================
   `);
 });

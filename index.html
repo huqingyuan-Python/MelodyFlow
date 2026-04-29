@@ -4093,12 +4093,10 @@
           }
         };
 
-        // Meting-API 地址（多源自动切换，支持VIP解析、酷狗、咪咕）
-        // 参数顺序：server= 必须放最前（Meting-API 标准格式要求）
+        // Meting-API 地址（直接搜索用，备用）
+        // 注意：injahow 和 qjqq 已失效，只保留 qijieya
         const METING_APIS = [
-          'https://api.qijieya.cn/meting/',
-          'https://api.injahow.cn/meting/',
-          'https://meting.qjqq.cn/'
+          'https://api.qijieya.cn/meting/'
         ];
 
         async function fetchMetingAPI(url) {
@@ -4143,14 +4141,26 @@
           onlineSearched.value = false;
 
           const platform = sourceCurrentPlatform.value;
-          const serverMap = { tencent: 'tencent', netease: 'netease', kugou: 'kugou', kuwo: 'kuwo', migu: 'migu' };
-          const server = serverMap[platform] || 'netease';
           const keyword = onlineSearchQuery.value.trim();
 
           try {
+            // 优先走本地服务器（服务器端会处理各平台的特殊逻辑）
+            if (serverUrl.value) {
+              const res = await fetch(`${serverUrl.value}/api/search?keywords=${encodeURIComponent(keyword)}&platform=${platform}&limit=30`, { signal: AbortSignal.timeout(15000) });
+              if (res.ok) {
+                const json = await res.json();
+                if (json.success && json.list && json.list.length > 0) {
+                  onlineResults.value = json.list.map(item => normalizeSearchResult(item, platform, ''));
+                  onlineSearched.value = true;
+                  onlineSearching.value = false;
+                  return;
+                }
+              }
+            }
+            // 回退：直接调用 Meting-API（用于非 tencent 平台）
+            const serverMap = { tencent: 'tencent', netease: 'netease', kugou: 'kugou', kuwo: 'kuwo', migu: 'migu' };
+            const server = serverMap[platform] || 'netease';
             const { data, base } = await searchMetingWithFallback('search', keyword, server, 30);
-
-            // 解析搜索结果
             let list = [];
             if (Array.isArray(data)) {
               list = data;
@@ -4159,11 +4169,9 @@
             } else if (data.result) {
               list = data.result.songs || [];
             }
-
             if (list.length === 0) {
-              onlineSearchError.value = `未找到相关歌曲（使用 ${server} 平台），试试其他关键词或切换平台`;
+              onlineSearchError.value = `未找到相关歌曲（${server} 平台），试试其他关键词或切换平台`;
             }
-
             onlineResults.value = list.map(item => normalizeSearchResult(item, platform, base));
             onlineSearched.value = true;
           } catch (e) {
@@ -4182,11 +4190,16 @@
           const artist = item.artist || '未知艺术家';
           const id = item.id || String(Math.random());
           // url, pic, lrc 是获取资源的 API 地址
-          const playUrl = item.url || null;
+          let playUrl = item.url || null;
           const cover = item.pic || null;
           const lrc = item.lrc || null;
           // 保存使用的 API base，用于后续获取播放地址
           const apiBase = metingBase || METING_APIS[0];
+          // 酷狗等平台返回的是代理 URL（直接访问返回 HTML 而非音频），
+          // 前端不能直接用，需要走本地流媒体代理 /proxy/
+          if (playUrl && playUrl.startsWith('https://api.')) {
+            playUrl = '/proxy/' + encodeURIComponent(playUrl);
+          }
 
           return {
             id,
@@ -4206,8 +4219,16 @@
 
         // 获取在线播放链接
         const getOnlinePlayUrl = async (song, quality = '320k') => {
-          // 如果 Meting-API 直接返回了播放URL
+          // 如果已有 /proxy/ 开头的本地代理 URL，直接返回
+          if (song.playUrl && song.playUrl.startsWith('/proxy/')) {
+            return { url: song.playUrl, quality: '320k' };
+          }
+          // 如果 Meting-API 直接返回了可用的播放URL
           if (song.playUrl && song.playUrl.startsWith('http')) {
+            // 同样是 api.xxx 代理 URL，转成本地代理
+            if (song.playUrl.includes('api.qijieya.cn') || song.playUrl.includes('api.injahow.cn') || song.playUrl.includes('meting.qjqq.cn')) {
+              return { url: '/proxy/' + encodeURIComponent(song.playUrl), quality: '320k' };
+            }
             return { url: song.playUrl, quality: '320k' };
           }
           // 否则通过 API 动态获取（自动尝试所有备用源）
