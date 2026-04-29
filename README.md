@@ -48,29 +48,53 @@
 - **数据导出** - 一键备份音乐库和设置
 - **数据导入** - 从备份文件恢复数据
 
+---
+
 ## 快速开始
 
-### 在线搜索版（推荐，无需安装任何软件）
+三种方式，根据需求任选其一。
+
+### 方式一：在线搜索版（推荐，无需安装任何软件）
 
 1. 直接用浏览器打开 `index.html`
 2. 选择平台（网易云/QQ音乐）
 3. 输入关键词搜索
-4. 点击播放按钮立即播放！
+4. 点击播放按钮立即播放
 
-> 会员歌曲无需会员，直接播放！
+> 会员歌曲无需会员，直接播放
 
-### 方式二：纯本地版
+---
+
+### 方式二：局域网部署版（一键启动）
+
+适合希望局域网内多设备（电脑+手机）都能使用的用户。
+
+| 平台 | 脚本文件 | 运行方式 |
+|------|---------|---------|
+| Windows | `启动服务.bat` | **双击运行** |
+| macOS | `start-server-macos.sh` | 终端执行 `chmod +x` 后运行 |
+| Linux | `start-server-linux.sh` | 终端执行 `chmod +x` 后运行 |
+
+脚本会自动：检测 Node.js → 安装依赖（国内镜像）→ 启动服务 → 显示 IP 地址
+
+> 首次使用需在播放器设置中填写 API 地址：`http://127.0.0.1:3000`
+
+局域网内其他设备访问：`http://<电脑IP>:3000`（API 地址也要对应填写）
+
+---
+
+### 方式三：纯本地版
 
 1. 下载或克隆本项目
 2. 用浏览器打开 `index.html` 即可使用
 3. 手动添加本地音频文件
 
-### 开发
-```bash
-# 克隆项目
-git clone https://github.com/huqingyuan-Python/MelodyFlow-Music.git
+---
 
-# 直接打开
+### 开发
+
+```bash
+git clone https://github.com/huqingyuan-Python/MelodyFlow-Music.git
 cd MelodyFlow-Music
 open index.html
 ```
@@ -135,10 +159,12 @@ open index.html
 
 ```
 MelodyFlow-Music/
-├── index.html    # 主播放器页面（直接打开即可使用）
-├── music-server/ # 备用音源服务（可选）
-├── README.md     # 使用文档
-└── LICENSE       # MIT 许可证
+├── index.html               # 主播放器页面（直接打开即可使用）
+├── 启动服务.bat              # Windows 一键部署脚本
+├── start-server-macos.sh    # macOS 一键部署脚本
+├── start-server-linux.sh    # Linux 一键部署脚本
+├── music-server/            # 音源服务（方式二使用）
+└── LICENSE                  # MIT 许可证
 ```
 
 ## 界面预览

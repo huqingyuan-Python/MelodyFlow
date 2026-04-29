@@ -47,10 +47,45 @@
 
 ## Quick Start
 
+### Option 1: Online Search (Recommended, No Installation)
+
+1. Open `index.html` in your browser
+2. Select platform (NetEase Cloud Music / QQ Music)
+3. Search and play!
+
+### Option 2: LAN Deployment (One-Click)
+
+For users who want to share music across devices on the same network.
+
+| Platform | Script | How to Run |
+|----------|--------|------------|
+| Windows | `启动服务.bat` | Double-click to run |
+| macOS | `start-server-macos.sh` | Run `chmod +x` then execute |
+| Linux | `start-server-linux.sh` | Run `chmod +x` then execute |
+
+After running, enter API address in settings: `http://127.0.0.1:3000`
+
+### Option 3: Local Only
+
+1. Open `index.html` directly
+2. Import local audio files manually
+
 ```bash
 git clone https://github.com/huqingyuan-Python/MelodyFlow-Music.git
 cd MelodyFlow-Music
 open index.html
+```
+
+## File Structure
+
+```
+MelodyFlow-Music/
+├── index.html               # Main player page (open directly)
+├── 启动服务.bat              # Windows one-click deploy script
+├── start-server-macos.sh    # macOS one-click deploy script
+├── start-server-linux.sh    # Linux one-click deploy script
+├── music-server/            # Music source service (used by Option 2)
+└── LICENSE                  # MIT License
 ```
 
 ## License
