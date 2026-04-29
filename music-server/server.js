@@ -435,17 +435,21 @@ const server = http.createServer(async (req, res) => {
           'Referer': 'https://y.qq.com',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': '*/*',
-          'Accept-Encoding': 'identity',
         }
       });
 
       let responded = false;
+      let dataReceived = false;
+
       const safeRespond = (statusCode, headers, body) => {
         if (!responded) {
           responded = true;
           try {
-            res.writeHead(statusCode, headers);
-            res.end(body);
+            if (body === null) {
+              res.writeHead(statusCode, headers);
+            } else {
+              res.end(body);
+            }
           } catch (e) {
             console.error('[Proxy] Write error:', e.message);
           }
@@ -457,10 +461,17 @@ const server = http.createServer(async (req, res) => {
         safeRespond(proxyRes.statusCode || 200, {
           'Content-Type': contentType,
           'Access-Control-Allow-Origin': '*',
-          'Content-Length': proxyRes.headers['content-length'],
           'Accept-Ranges': 'bytes',
         }, null);
+
         if (!responded) {
+          proxyRes.on('data', () => { dataReceived = true; });
+          proxyRes.on('end', () => {
+            if (!dataReceived && !responded) {
+              // 上游返回了空响应，说明该平台播放暂不可用
+              safeRespond(204, { 'Content-Type': 'application/json' }, '');
+            }
+          });
           proxyRes.pipe(res);
         }
       });
