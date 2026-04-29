@@ -4082,7 +4082,8 @@
           }
         };
 
-        // Meting-API 地址（免费支持VIP解析），多个备用
+        // Meting-API 地址（多源自动切换，支持VIP解析、酷狗、咪咕）
+        // 参数顺序：server= 必须放最前（Meting-API 标准格式要求）
         const METING_APIS = [
           'https://api.qijieya.cn/meting/',
           'https://api.injahow.cn/meting/',
@@ -4099,12 +4100,13 @@
           let lastErr;
           for (const base of METING_APIS) {
             try {
-              const url = `${base}?type=${type}&id=${encodeURIComponent(id)}&server=${server}&limit=${limit}`;
+              const url = `${base}?server=${server}&type=${type}&id=${encodeURIComponent(id)}&limit=${limit}`;
               const data = await fetchMetingAPI(url);
-              // 检查是否有有效结果（不是空数组/空对象）
+              // 跳过错误响应
+              if (data && typeof data === 'object' && data.error) continue;
+              // 空数组也算有效结果
               const list = Array.isArray(data) ? data : (data.songs || data.result?.songs || []);
               if (list.length > 0) return { data, base };
-              // 空结果也算成功（就是没有结果）
               return { data, base };
             } catch(e) {
               lastErr = e;
@@ -4197,17 +4199,18 @@
           if (song.playUrl && song.playUrl.startsWith('http')) {
             return { url: song.playUrl, quality: '320k' };
           }
-          // 否则通过 API 动态获取（使用搜索时用的 apiBase，自动尝试备用）
+          // 否则通过 API 动态获取（自动尝试所有备用源）
           const serverMap = { tencent: 'tencent', netease: 'netease', kugou: 'kugou', kuwo: 'kuwo', migu: 'migu' };
           const server = serverMap[song.platform] || 'netease';
           const bases = song.apiBase ? [song.apiBase, ...METING_APIS.filter(b => b !== song.apiBase)] : METING_APIS;
           let lastErr;
           for (const base of bases) {
             try {
-              const url = `${base}?type=url&id=${song.id}&server=${server}&br=320`;
+              const url = `${base}?server=${server}&type=url&id=${song.id}&br=320`;
               const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
               const data = await res.json();
+              if (data && typeof data === 'object' && data.error) continue;
               const playUrl = Array.isArray(data) ? data[0]?.url : data?.url;
               if (playUrl && playUrl.startsWith('http')) {
                 return { url: playUrl, quality: '320k' };
@@ -4286,7 +4289,7 @@
           const bases = song?.apiBase ? [song.apiBase, ...METING_APIS.filter(b => b !== song.apiBase)] : METING_APIS;
           for (const base of bases) {
             try {
-              const url = `${base}?type=lrc&id=${id}&server=${server}`;
+              const url = `${base}?server=${server}&type=lrc&id=${id}`;
               const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
               if (!res.ok) continue;
               const data = await res.json();

@@ -1,3 +1,10 @@
 # Temp files
 *.tmp
 .DS_Store
+
+# Dependencies
+node_modules/
+
+# Local data
+user-server/melodyflow.json
+user-server/uploads/

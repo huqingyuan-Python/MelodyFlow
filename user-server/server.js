@@ -9,7 +9,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const { initDb, db } = require('./db');
+const { initDb } = require('./db');
 const usersRouter = require('./routes/users');
 const syncRouter = require('./routes/sync');
 
